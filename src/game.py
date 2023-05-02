@@ -1,0 +1,139 @@
+from src.client.game_client import Client
+from src.map.game_map import Map
+from src.players.player import Player
+from src.players.bot_player import BotPlayer
+
+from threading import Semaphore
+import pygame
+
+
+class Game:
+    def __init__(self, name: str = None, max_players: int = 1, num_turns: int = None) -> None:
+        self.__name: str = name
+        self.__map = None
+        self.__running: bool = False
+        self.__num_turns: int = num_turns
+        self.__current_turn = None
+        self.__winner = None
+
+        self.__current_client: Client = Client()
+        self.__all_clients: dict[Player, Client] = {}
+
+        self.__current_player = None
+        self.__waiting_players: [Player] = []
+        self.__players_in_game: dict[int, Player] = {}
+
+        self.__current_player_idx = None
+        self.__max_players: int = max_players
+        self.__game_players: int = 0
+        self.__all_players: int = 0
+
+        self.__turn_played_sem: Semaphore = Semaphore(0)
+        self.__clock = pygame.time.Clock()
+
+    def add_player(self, name: str, password: str = None, is_observer: bool = None) -> None:
+        if self.__game_players >= self.__max_players:
+            is_observer = True
+
+        if not is_observer:
+            self.__game_players += 1
+
+        self.__all_players += 1
+
+        player: Player = self.__create_player(name, password, is_observer)
+
+        if self.__running:
+            self.__connect(player)
+        else:
+            self.__waiting_players.append(player)
+
+    def start_game(self) -> None:
+        if not self.__waiting_players:
+            raise RuntimeError("Can't start the game without any players!")
+
+        self.__running = True
+        for p in self.__waiting_players:
+            self.__connect(p)
+
+        self.run()
+
+    def run(self) -> None:
+        self.__initialize_game()
+
+        while self.__running:
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.__running = False
+
+            self.__map.draw(self.__current_turn, self.__num_turns)
+
+            self.__clock.tick(30)
+
+            for player in self.__players_in_game.values():
+                player.next_turn_sem.release()
+
+            for _ in range(self.__all_players):
+                self.__turn_played_sem.acquire()
+
+            self.__update_game(self.__current_client.game_state())
+
+        self.__end_game()
+
+    def __update_game(self, game_state: dict = None) -> None:
+        self.__current_turn = game_state["current_turn"]
+        self.__current_player_idx = game_state["current_player_idx"]
+        self.__current_player = self.__players_in_game[self.__current_player_idx]
+        self.__current_client = self.__all_clients[self.__current_player]
+
+        for p in self.__players_in_game.values():
+            p.set_curr(self.__current_player_idx)
+
+        print()
+        print(f"Current turn: {self.__current_turn}, "
+              f"current player: {self.__current_player.name}")
+
+        self.__map.update_map(game_state)
+
+        if game_state["finished"] or self.__current_turn == self.__num_turns:
+            self.__running = False
+            self.__winner = game_state["winner"]
+
+    def __initialize_game(self) -> None:
+        game_map: dict = self.__current_client.map()
+        game_state: dict = self.__current_client.game_state()
+
+        self.__num_turns = game_state["num_turns"]
+        self.__max_players = game_state["num_players"]
+        self.__map = Map(game_map, game_state, self.__players_in_game)
+
+        for p in self.__players_in_game.values():
+            p.add_map(self.__map)
+
+        self.__update_game(game_state)
+
+    def __end_game(self) -> None:
+        if self.__winner:
+            winner = self.__players_in_game[self.__winner].name
+            print(f"Game winner is {winner}!")
+        else:
+            print(f"Game is Draw!")
+
+        for client in self.__all_clients.values():
+            client.logout()
+            client.disconnect()
+
+        pygame.quit()
+
+    def __connect(self, player: Player) -> None:
+        self.__all_clients[player] = Client()
+        player_info: dict = self.__all_clients[player].login(player.name, player.password, self.__name,
+                                                             self.__num_turns, self.__max_players, player.is_observer)
+        player.add(player_info, self.__all_clients[player])
+        player.start()
+
+        self.__players_in_game[player.id] = player
+        self.__current_client = self.__all_clients[player]
+
+    def __create_player(self, name: str, password: str = None, is_observer: bool = None) -> Player:
+        return BotPlayer(name, password, is_observer, self.__turn_played_sem, self.__current_player_idx)
