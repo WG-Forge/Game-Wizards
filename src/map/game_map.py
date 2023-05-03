@@ -1,19 +1,18 @@
 import pygame
+from pygame import Surface
+from pygame.font import Font
 import math
 import random
+from typing import Any, Optional
 
 from src.map.hex import Hex
+from src.map.hex_utils import HexUtils
 from src.vehicles.tank import Tank
 
 
 class Map:
     WIDTH, HEIGHT = 1200, 800
     HEX_SIZE = 21
-
-    hexDirectionVectors = [
-        Hex(1, 0, -1), Hex(1, -1, 0), Hex(0, -1, 1),
-        Hex(-1, 0, 1), Hex(-1, 1, 0), Hex(0, 1, -1),
-    ]
 
     __BLACK = (0, 0, 0)
     __WHITE = (255, 255, 255)
@@ -30,29 +29,28 @@ class Map:
 
     def __init__(self, game_map: dict, game_state: dict, players_in_game: dict) -> None:
         pygame.init()
-        self.screen = pygame.display.set_mode((Map.WIDTH, Map.HEIGHT))
+        self.screen: Surface = pygame.display.set_mode((Map.WIDTH, Map.HEIGHT))
         pygame.display.set_caption("Game Wizards")
-        self.__font_size = 24
-        self.__font = pygame.font.Font(None, self.__font_size)
+        self.__font_size: int = 24
+        self.__font: Font = pygame.font.Font(None, self.__font_size)
 
-        self.__map: [Hex] = []
+        self.__map: list[Hex] = []
         self.__tanks: dict[int, Tank] = {}
         self.__tank_positions: dict[int, Hex] = {}
-        self.__spawn_points: [Hex] = []
+        self.__spawn_points: list[Hex] = []
 
-        self.__base: [Hex] = []
-        self.__obstacles: [Hex] = []
-        self.__light_repair: [Hex] = []
-        self.__heavy_repair: [Hex] = []
+        self.__base: list[Hex] = []
+        self.__obstacles: list[Hex] = []
+        self.__light_repair: list[Hex] = []
+        self.__heavy_repair: list[Hex] = []
         self.__catapult: dict[Hex, int] = {}
 
-        self.__destroyed: [Tank] = []
         self.__shoot_actions: dict[int, []] = {}
-        self.__player_ids: [int] = []
+        self.__player_ids: list[int] = []
         self.__initialize_map(game_map, game_state, players_in_game)
 
     def __initialize_map(self, game_map: dict, game_state: dict, players_in_game: dict) -> None:
-        self.__map = self.__hexSpiral(Hex(0, 0, 0), game_map["size"])
+        self.__map = HexUtils.hex_spiral(Hex(0, 0, 0), game_map["size"])
 
         for p in players_in_game.keys():
             self.__player_ids.append(p)
@@ -65,7 +63,7 @@ class Map:
             tank = Tank(int(tank_id), tank_info)
             self.__tanks[int(tank_id)] = tank
             player.add_tank(tank)
-            self.__spawn_points.append(self.fromDictToHex(tank_info["spawn_position"]))
+            self.__spawn_points.append(HexUtils.dict_to_hex(tank_info["spawn_position"]))
 
         for player in players_in_game.values():
             if not player.is_observer:
@@ -73,7 +71,7 @@ class Map:
 
         for h, positions in game_map["content"].items():
             for position in positions:
-                new_hex = Map.fromDictToHex(position)
+                new_hex = HexUtils.dict_to_hex(position)
                 if h == "base":
                     self.__base.append(new_hex)
                 elif h == "obstacle":
@@ -85,14 +83,14 @@ class Map:
                 elif h == "catapult":
                     self.__catapult[new_hex] = 3
 
-    def draw(self, current_turn: int, num_turns: int):
+    def draw(self, current_turn: int, num_turns: int) -> None:
         self.screen.fill(Map.__WHITE)
         text = self.__font.render(f"ROUND NUMBER: {current_turn + 1}/{num_turns}", True, Map.__BLACK)
         self.screen.blit(text, (30, 25))
 
         for h in self.__map:
             # coordinates of the center of the hex
-            x, y = Map.hexToPixel(h.q, h.r)
+            x, y = HexUtils.hex_to_pixel(h.q, h.r)
 
             points = [(x + Map.HEX_SIZE * math.cos(angle), y + Map.HEX_SIZE * math.sin(angle))
                       for angle in [0, math.pi / 3, 2 * math.pi / 3, math.pi, 4 * math.pi / 3, 5 * math.pi / 3]
@@ -114,17 +112,17 @@ class Map:
                 pygame.draw.polygon(self.screen, Map.__SPAWN_BLUE, points, 0)
                 pygame.draw.polygon(self.screen, Map.__BLACK, points, 3)
 
-            # orange spawn coloring yellow
+            # yellow spawn coloring yellow
             elif h.q == 10 and -7 <= h.s <= -3 and -7 <= h.r <= -3:
                 pygame.draw.polygon(self.screen, Map.__SPAWN_YELLOW, points, 0)
                 pygame.draw.polygon(self.screen, Map.__BLACK, points, 3)
 
-            # purple spawn coloring red
+            # red spawn coloring red
             elif h.r == 10 and -7 <= h.s <= -3 and -7 <= h.q <= -3:
                 pygame.draw.polygon(self.screen, Map.__SPAWN_RED, points, 0)
                 pygame.draw.polygon(self.screen, Map.__BLACK, points, 3)
 
-        self.__draw_special(self.__catapult.keys(), "catapult")
+        self.__draw_special(list(self.__catapult.keys()), "catapult")
         self.__draw_special(self.__heavy_repair, "heavy_repair")
         self.__draw_special(self.__light_repair, "light_repair")
 
@@ -139,8 +137,8 @@ class Map:
     def update_map(self, game_state: dict) -> None:
         for tank_id, tank_info in game_state["vehicles"].items():
             tank_id = int(tank_id)
-            self.__tank_positions[tank_id] = Map.fromDictToHex(tank_info["position"])
-            server_position = Map.fromDictToHex(tank_info["position"])
+            self.__tank_positions[tank_id] = HexUtils.dict_to_hex(tank_info["position"])
+            server_position = HexUtils.dict_to_hex(tank_info["position"])
             server_hp = tank_info["health"]
             server_cp = tank_info["capture_points"]
 
@@ -156,14 +154,11 @@ class Map:
             if server_cp != tank_cp:
                 tank.update_cp(server_cp)
 
-    def __draw_legend(self) -> None:
-        pass
-
-    def __draw_special(self, hexes: [Hex], name: str) -> None:
+    def __draw_special(self, hexes: list[Hex], name: str) -> None:
         image = pygame.image.load(f"src/assets/special_hexes/{name}.png")
         scaled_image = pygame.transform.scale(image, (28, 28))
         for h in hexes:
-            x, y = self.hexToPixel(h.q, h.r)
+            x, y = HexUtils.hex_to_pixel(h.q, h.r)
             self.screen.blit(scaled_image, (x - 14, y - 14))
 
     def __draw_tank(self, tank: Tank) -> None:
@@ -179,14 +174,14 @@ class Map:
         color = pygame.Surface(scaled_image.get_size())
         color.fill(color_tuple)
         scaled_image.blit(color, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
-        x, y = self.hexToPixel(h.q, h.r)
+        x, y = HexUtils.hex_to_pixel(h.q, h.r)
         self.screen.blit(scaled_image, (x - 14, y - 14))
 
     def __draw_hp(self) -> None:
         for tank in self.__tanks.values():
             ratio_green = tank.get_hp() * 1.0 / tank.get_full_hp()
             q, r = tank.get_position().q, tank.get_position().r
-            x, y = self.hexToPixel(q, r)
+            x, y = HexUtils.hex_to_pixel(q, r)
             line_start_g = (x - 10, y - 13)
             line_end_g = (x + 10 * ratio_green, y - 13)
             line_start_r = line_end_g
@@ -195,12 +190,15 @@ class Map:
             if ratio_green != 1.0:
                 pygame.draw.line(self.screen, Map.__RED, line_start_r, line_end_r, 4)
 
+    def __draw_legend(self) -> None:
+        pass
+
     def draw_shoot_animation(self, tank: Tank, tanks: list[Tank]) -> None:
         h1 = tank.get_position()
         for t in tanks:
             h2 = t.get_position()
-            x1, y1 = Map.hexToPixel(h1.q, h1.r)
-            x2, y2 = Map.hexToPixel(h2.q, h2.r)
+            x1, y1 = HexUtils.hex_to_pixel(h1.q, h1.r)
+            x2, y2 = HexUtils.hex_to_pixel(h2.q, h2.r)
             points = [(x2 + Map.HEX_SIZE * math.cos(angle), y2 + Map.HEX_SIZE * math.sin(angle))
                       for angle in [0, math.pi / 3, 2 * math.pi / 3, math.pi, 4 * math.pi / 3, 5 * math.pi / 3]
                       ]
@@ -209,14 +207,14 @@ class Map:
 
         pygame.display.flip()
 
-    def draw_attacked_hp(self, tanks: [Tank], damage: int) -> None:
+    def draw_attacked_hp(self, tanks: list[Tank], damage: int) -> None:
         for t in tanks:
             new_hp = t.get_hp() - damage
             if new_hp < 0:
                 new_hp = 0
             ratio_green = new_hp * 1.0 / t.get_full_hp()
             q, r = t.get_position().q, t.get_position().r
-            x, y = self.hexToPixel(q, r)
+            x, y = HexUtils.hex_to_pixel(q, r)
             line_start_g = (x - 10, y - 13)
             line_end_g = (x + 10 * ratio_green, y - 13)
             line_start_r = line_end_g
@@ -229,14 +227,14 @@ class Map:
 
         pygame.display.flip()
 
-    def hex_reachable(self, start: Hex, movement: int) -> Hex:
+    def move(self, start: Hex, movement: int) -> Hex:
         visited = []
         rings = [[start]]
         for k in range(1, movement + 1):
             rings.append([])
             for h in rings[k - 1]:
                 for direction in range(6):
-                    neighbor = self.__hexNeighbor(h, direction)
+                    neighbor = HexUtils.hex_neighbor(h, direction)
                     if neighbor not in visited and neighbor not in self.__obstacles \
                             and not self.__offTheGridDetection(neighbor):
                         visited.append(neighbor)
@@ -247,12 +245,10 @@ class Map:
 
         move_to = []
         if visited:
-            d = self.distance(Hex(0, 0, 0), visited[0])
-            move_to = [h for h in visited if self.distance(Hex(0, 0, 0), h) == d]
+            d = HexUtils.distance(Hex(0, 0, 0), visited[0])
+            move_to = [h for h in visited if HexUtils.distance(Hex(0, 0, 0), h) == d]
 
         return random.choice(move_to) if visited else None
-
-        # return visited[0] if visited else None
 
     def catapult_check(self, tank: Tank, move_coord: Hex) -> None:
         if move_coord in self.__catapult.keys() and self.__catapult[move_coord] > 0:
@@ -282,23 +278,13 @@ class Map:
 
         self.__shoot_actions[tank.get_player_id()].append(tank2.get_player_id())
 
-    def reset_shoot_actions(self, player_id: int) -> None:
-        self.__shoot_actions[player_id] = []
-
-    def tank_from_hex(self, h: Hex) -> Tank:
-        return self.__tanks[Map.get_key_from_value(self.__tank_positions, h)[0]]
-
-    @staticmethod
-    def get_key_from_value(d, value):
-        return [k for k, v in d.items() if v == value]
-
-    def shoot(self, tank: Tank) -> [Hex, [Tank]]:
+    def shoot(self, tank: Tank) -> tuple[Optional[Hex], Optional[list[Tank]]]:
         if tank.get_type() != "at_spg":
             return self.__curved_trajectory(tank)
         else:
             return self.__straight_trajectory(tank)
 
-    def __curved_trajectory(self, tank: Tank) -> [Hex, [Tank]]:
+    def __curved_trajectory(self, tank: Tank) -> tuple[Optional[Hex], Optional[list[Tank]]]:
         # Shoot coords based on tank position
         shoot_coords = self.__shoot_coords(tank)
 
@@ -312,7 +298,7 @@ class Map:
 
         # Add to blocked my and neutral tanks
         for t in self.__tanks.values():
-            if t.get_player_id() == tank.get_player_id() or self.neutrality_check(tank, t):
+            if t.get_player_id() == tank.get_player_id() or self.__neutrality_check(tank, t):
                 blocked.append(t.get_position())
 
         # Enemy tanks
@@ -327,7 +313,7 @@ class Map:
         shoot_coords = [coord for coord in shoot_coords if coord not in blocked and coord in enemy_tanks]
 
         # From hex list make tank list
-        tank_shoot_coords = [self.tank_from_hex(h) for h in shoot_coords]
+        tank_shoot_coords = [self.__tank_from_hex(h) for h in shoot_coords]
 
         # Keep tanks whose hp is > 0 and sort them based on hp
         tank_shoot_coords = [t for t in tank_shoot_coords if t.get_hp() > 0]
@@ -339,7 +325,7 @@ class Map:
         else:
             return None, None
 
-    def __straight_trajectory(self, tank: Tank) -> [Hex, [Tank]]:
+    def __straight_trajectory(self, tank: Tank) -> tuple[Optional[Hex], Optional[list[Tank]]]:
         # Shoot coords based on tank position
         shoot_coords = self.__shoot_coords(tank)
         x, y, z = tank.get_position()
@@ -351,7 +337,7 @@ class Map:
         for coord in shoot_coords:
             if coord in self.__obstacles:
                 blocked.append(coord)
-                d = Map.distance(tank.get_position(), coord)
+                d = HexUtils.distance(tank.get_position(), coord)
                 (dx, dy, dz) = ((x - coord.q) / d, (y - coord.r) / d, (z - coord.s) / d)
                 for i in range(tank.get_max_range() - d):
                     blocked.append(Hex(coord.q - (i + 1) * dx, coord.r - (i + 1) * dy, coord.s - (i + 1) * dz))
@@ -359,10 +345,10 @@ class Map:
         # Add to blocked my tanks that are not in 1st ring and neutral (if in 1st ring add whole line)
         for t in self.__tanks.values():
             coord = t.get_position()
-            if t.get_player_id() == tank.get_player_id() and self.distance(coord, tank.get_position()) > 1:
+            if t.get_player_id() == tank.get_player_id() and HexUtils.distance(coord, tank.get_position()) > 1:
                 blocked.append(coord)
-            elif self.neutrality_check(tank, t):
-                if self.distance(coord, tank.get_position()) == 1:
+            elif self.__neutrality_check(tank, t):
+                if HexUtils.distance(coord, tank.get_position()) == 1:
                     blocked.append(coord)
                     (dx, dy, dz) = ((x - coord.q), (y - coord.r), (z - coord.s))
                     for i in range(tank.get_max_range()):
@@ -378,7 +364,7 @@ class Map:
 
         # Add enemy tanks to list
         for t in self.__tanks.values():
-            if t.get_player_id() != tank.get_player_id() and not self.neutrality_check(tank, t):
+            if t.get_player_id() != tank.get_player_id() and not self.__neutrality_check(tank, t):
                 enemy_tanks.append(t)
 
         # Only keep enemies that are in shoot range whose hp is > 0 and sort them based on hp
@@ -396,22 +382,22 @@ class Map:
 
         # Add to tanks_shot_at
         coord = tank_shot.get_position()
-        d = Map.distance(tank.get_position(), coord)
+        d = HexUtils.distance(tank.get_position(), coord)
         (dx, dy, dz) = ((x - coord.q) / d, (y - coord.r) / d, (z - coord.s) / d)
         for i in range(tank.get_max_range()):
             new_hex = Hex(x - (i + 1) * dx, y - (i + 1) * dy, z - (i + 1) * dz)
             if new_hex in shoot_coords:
                 for t in enemy_tanks:
                     if new_hex == t.get_position():
-                        tanks_shot_at.append(self.tank_from_hex(new_hex))
+                        tanks_shot_at.append(self.__tank_from_hex(new_hex))
 
         return Hex(x - dx, y - dy, z - dz), tanks_shot_at
 
-    def __shoot_coords(self, tank: Tank) -> [Hex]:
+    def __shoot_coords(self, tank: Tank) -> list[Hex]:
         # coords based on center of map
         general_shoot_coords = []
         for radius in range(tank.get_min_range(), tank.get_max_range() + 1):
-            general_shoot_coords += self.hexRing(Hex(0, 0, 0), radius)
+            general_shoot_coords += HexUtils.hex_ring(Hex(0, 0, 0), radius)
 
         # if at_spg keep only straight lines
         if tank.get_type() == "at_spg":
@@ -424,89 +410,31 @@ class Map:
 
         return positional_shoot_coords
 
-    def neutrality_check(self, tank_1: Tank, tank_2: Tank) -> bool:
+    def __tank_from_hex(self, h: Hex) -> Tank:
+        return self.__tanks[Map.__get_key_from_value(self.__tank_positions, h)[0]]
+
+    @staticmethod
+    def __get_key_from_value(d: dict, value: Any) -> list[Any]:
+        return [k for k, v in d.items() if v == value]
+
+    def __neutrality_check(self, tank_1: Tank, tank_2: Tank) -> bool:
         id1, id2 = tank_1.get_player_id(), tank_2.get_player_id()
-        id3 = self.third_player(id1, id2)
+        id3 = self.__third_player(id1, id2)
         if id1 in self.__shoot_actions[id2] or id2 not in self.__shoot_actions[id3]:
             return False
         else:
             return True
 
-    def third_player(self, id1: int, id2: int) -> int:
+    def __third_player(self, id1: int, id2: int) -> int:
         for idx in self.__player_ids:
             if idx != id1 and idx != id2:
                 return idx
 
-    @staticmethod
-    def distance(h1: Hex, h2: Hex) -> int:
-        return int((abs(h1.q - h2.q) + abs(h1.r - h2.r) + abs(h1.s - h2.s)) / 2)
+    def reset_shoot_actions(self, player_id: int) -> None:
+        self.__shoot_actions[player_id] = []
 
     def is_in_base(self, tank_pos: Hex) -> bool:
         return tank_pos in self.__base
-
-    @staticmethod
-    def fromDictToHex(data: dict) -> Hex:
-        return Hex(data['x'], data['y'], data['z'])
-
-    @staticmethod
-    def __hexDirection(direction) -> Hex:
-        return Map.hexDirectionVectors[direction]
-
-    @staticmethod
-    def __hexAdd(h, vector) -> Hex:
-        return Hex(h.q + vector.q, h.r + vector.r, h.s + vector.s)
-
-    def __hexNeighbor(self, h, direction) -> Hex:
-        return self.__hexAdd(h, self.__hexDirection(direction))
-
-    def __hexNeighbors(self, h: Hex) -> [Hex]:
-        neighbors = []
-        for direction in range(6):
-            new_neighbor = self.__hexNeighbor(h, direction)
-            if not self.__offTheGridDetection(new_neighbor):
-                neighbors.append(new_neighbor)
-
-        return neighbors
-
-    @staticmethod
-    def __hexScale(h, factor) -> Hex:
-        return Hex(h.q * factor, h.r * factor, h.s * factor)
-
-    # Returns a list of a hexes that are in a ring on certain radius
-    def hexRing(self, center, radius) -> [Hex]:
-        results = []
-        h = Map.__hexAdd(center, Map.__hexScale(Map.__hexDirection(4), radius))
-        for i in range(6):
-            for j in range(radius):
-                results.append(h)
-                h = self.__hexNeighbor(h, i)
-
-        return results
-
-    # Returns a list of hexes that are in a spiral on certain radius
-    def __hexSpiral(self, center, radius) -> [Hex]:
-        results = [center]
-        for k in range(radius):
-            results += self.hexRing(center, k)
-
-        return results
-
-    # Definition of function that converts pixel coordinates to cubic
-    @staticmethod
-    def __pixelToHex(x, y) -> Hex:
-        r = 2 * x / Map.HEX_SIZE / 3
-        q = y / Map.HEX_SIZE / math.sqrt(3) - r / 2
-        s = -q - r
-
-        return Hex(q, r, s)
-
-    # Definition of function that converts cubic coordinates to pixel coordinates
-    @staticmethod
-    def hexToPixel(q, r) -> tuple:
-        screen_x = Map.HEX_SIZE * 3 / 2 * r
-        screen_y = Map.HEX_SIZE * math.sqrt(3) * (q + r / 2)
-
-        return int(screen_x + Map.WIDTH / 2), int(screen_y + Map.HEIGHT / 2)
 
     # Detects if the given coordinate is off the grid
     def __offTheGridDetection(self, h: Hex) -> bool:

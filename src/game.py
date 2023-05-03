@@ -1,35 +1,38 @@
+import pygame
+from pygame.time import Clock
+from threading import Semaphore
+from typing import Optional
+
 from src.client.game_client import Client
 from src.map.game_map import Map
 from src.players.player import Player
 from src.players.bot_player import BotPlayer
-
-from threading import Semaphore
-import pygame
+from src.players.observer import Observer
 
 
 class Game:
     def __init__(self, name: str = None, max_players: int = 1, num_turns: int = None) -> None:
         self.__name: str = name
-        self.__map = None
+        self.__map: Optional[Map] = None
         self.__running: bool = False
         self.__num_turns: int = num_turns
-        self.__current_turn = None
-        self.__winner = None
+        self.__current_turn: Optional[int] = None
+        self.__winner: Optional[int] = None
 
         self.__current_client: Client = Client()
         self.__all_clients: dict[Player, Client] = {}
 
-        self.__current_player = None
-        self.__waiting_players: [Player] = []
+        self.__current_player: Optional[Player] = None
+        self.__waiting_players: list[Player] = []
         self.__players_in_game: dict[int, Player] = {}
 
-        self.__current_player_idx = None
+        self.__current_player_idx: Optional[int] = None
         self.__max_players: int = max_players
         self.__game_players: int = 0
         self.__all_players: int = 0
 
         self.__turn_played_sem: Semaphore = Semaphore(0)
-        self.__clock = pygame.time.Clock()
+        self.__clock: Clock = Clock()
 
     def add_player(self, name: str, password: str = None, is_observer: bool = None) -> None:
         if self.__game_players >= self.__max_players:
@@ -136,4 +139,7 @@ class Game:
         self.__current_client = self.__all_clients[player]
 
     def __create_player(self, name: str, password: str = None, is_observer: bool = None) -> Player:
-        return BotPlayer(name, password, is_observer, self.__turn_played_sem, self.__current_player_idx)
+        if is_observer:
+            return Observer(name, password, is_observer, self.__turn_played_sem, self.__current_player_idx)
+        else:
+            return BotPlayer(name, password, is_observer, self.__turn_played_sem, self.__current_player_idx)

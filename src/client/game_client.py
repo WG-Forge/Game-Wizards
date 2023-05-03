@@ -50,7 +50,7 @@ class Client:
         else:
             return 0
 
-    def chat(self, message) -> None:
+    def chat(self, message: str) -> None:
         self.__send_data(Action.CHAT, {"message": message})
 
     def move(self, data: dict) -> None:
@@ -63,7 +63,7 @@ class Client:
         self.__socket.close()
 
     @staticmethod
-    def __parse_response(response_msg) -> (Result, dict):
+    def __parse_response(response_msg: bytes) -> [Result, dict]:
         result_code = int.from_bytes(response_msg[:4], 'little')
         data_len = int.from_bytes(response_msg[4:8], 'little')
 
@@ -75,14 +75,14 @@ class Client:
         return result_code, response_data
 
     @staticmethod
-    def __message_encoder(data: dict):
+    def __encode_message(data: dict) -> bytes:
         data_json = json.dumps(data).encode('utf-8')
         data_len = len(data_json)
         return data_len.to_bytes(4, 'little') + data_json
 
     def __send_data(self, action: Action, data: dict = None) -> dict:
         if data is not None:
-            msg = action.value.to_bytes(4, "little") + self.__message_encoder(data)
+            msg = action.value.to_bytes(4, "little") + self.__encode_message(data)
         else:
             msg = action.value.to_bytes(8, "little")
 

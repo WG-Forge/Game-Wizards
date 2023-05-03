@@ -1,4 +1,5 @@
 from src.map.hex import Hex
+from src.map.hex_utils import HexUtils
 
 
 class Tank:
@@ -41,17 +42,17 @@ class Tank:
         self.__max_range: int = Tank.__characteristics[self.__tank_type]["max_range"]
         self.__bonus_range: int = 0
         self.__damage: int = 1
-        self.__capture_points = tank_data["capture_points"]
-        self.__spawn_position: Hex = Tank.__fromDictToHex(tank_data["spawn_position"])
+        self.__capture_points: int = tank_data["capture_points"]
+        self.__spawn_position: Hex = HexUtils.dict_to_hex(tank_data["spawn_position"])
         self.__position: Hex = self.__spawn_position
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.__tank_id}: {self.__position}"
 
-    def  __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__tank_id}: {self.__position}"
 
-    def __lt__(self, other):
+    def __lt__(self, other) -> bool:
         return self.__hp < other.__hp
 
     def get_player_id(self) -> int:
@@ -108,7 +109,3 @@ class Tank:
     def reset(self) -> None:
         self.__hp = self.__full_hp
         self.__position = self.__spawn_position
-
-    @staticmethod
-    def __fromDictToHex(data: dict) -> Hex:
-        return Hex(data['x'], data['y'], data['z'])
