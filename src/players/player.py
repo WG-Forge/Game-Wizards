@@ -1,6 +1,5 @@
 from abc import abstractmethod, ABC
 from threading import Thread, Semaphore
-from time import sleep
 from typing import Optional
 
 from src.vehicles.tank import Tank
@@ -57,14 +56,6 @@ class Player(Thread, ABC):
             self.next_turn_sem.acquire()
 
             self._play_turn()
-
-            # if self._current_player == self.id:
-            #     self._map.reset_shoot_actions(self.id)
-            #     self._play_turn()
-
-            # Uncomment for slower game
-            # sleep(1)
-            # self._client.turn()
 
             self.__turn_played_sem.release()
 

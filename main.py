@@ -2,7 +2,6 @@ import random
 
 from src.game import Game
 
-
 if __name__ == "__main__":
     rnd = random.randint(100000, 200000)
     game = Game(str(rnd), max_players=3, is_full=False)

@@ -1,7 +1,8 @@
 from threading import Semaphore
+from time import sleep
 
 from src.players.player import Player
-from src.map.hex_utils import HexUtils
+from src.map.hex import Hex
 from src.vehicles.tank import Tank
 
 
@@ -11,9 +12,6 @@ class BotPlayer(Player):
         super().__init__(name, password, is_observer, turn_played_sem, current_player)
 
     def _play_turn(self) -> None:
-        # for tank in self._tanks:
-        #     if not self._shoot(tank):
-        #         self._move(tank)
         if self._current_player == self.id:
             self._map.reset_shoot_actions(self.id)
             for tank in self._tanks:
@@ -54,5 +52,5 @@ class BotPlayer(Player):
         target = {"x": move_coord.q, "y": move_coord.r, "z": move_coord.s}
         move_data = {"vehicle_id": tank.get_id(), "target": target}
 
-        self._map.local_move(tank, HexUtils.dict_to_hex(target))
+        self._map.local_move(tank, Hex.dict_to_hex(target))
         self._client.move(move_data)

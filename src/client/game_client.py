@@ -1,8 +1,8 @@
 import socket
 import json
 
-from src.client.actions import Action
-from src.client.results import Result
+from src.constants import Action, Result
+
 
 class Client:
     __server_host = "wgforge-srv.wargaming.net"
