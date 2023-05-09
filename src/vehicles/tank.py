@@ -18,6 +18,7 @@ class Tank:
         self.__damage: int = 1
 
         self.__capture_points: int = tank_data["capture_points"]
+        self.__destruction_points: int = 0
         self.__spawn_position: Hex = Hex.dict_to_hex(tank_data["spawn_position"])
         self.__position: Hex = self.__spawn_position
 
@@ -69,6 +70,9 @@ class Tank:
     def get_damage(self) -> int:
         return self.__damage
 
+    def get_dp(self) -> int:
+        return self.__destruction_points
+
     def update_position(self, new_position: Hex) -> None:
         self.__position = new_position
 
@@ -77,6 +81,9 @@ class Tank:
 
     def update_cp(self, new_cp: int) -> None:
         self.__capture_points = new_cp
+
+    def update_dp(self, dmg: int) -> None:
+        self.__destruction_points += dmg
 
     def set_bonus_range(self, bonus_range: int) -> None:
         self.__bonus_range = bonus_range

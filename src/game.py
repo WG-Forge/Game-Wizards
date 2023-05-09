@@ -78,7 +78,7 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.__running = False
 
-            self.__map.draw(self.__current_turn, self.__num_turns)
+            self.__map.draw_map(self.__current_turn, self.__num_turns)
 
             self.__clock.tick(30)
 

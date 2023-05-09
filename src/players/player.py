@@ -2,6 +2,7 @@ from abc import abstractmethod, ABC
 from threading import Thread, Semaphore
 from typing import Optional
 
+from src.logic import MSLogic
 from src.vehicles.tank import Tank
 from src.client.game_client import Client
 from src.map.game_map import Map
@@ -21,6 +22,7 @@ class Player(Thread, ABC):
         self.id: Optional[int] = None
         self._client: Optional[Client] = None
         self._map: Optional[Map] = None
+        self._ms_logic: Optional[MSLogic] = None
         self._current_player: int = current_player
 
         self.__turn_played_sem: Semaphore = turn_played_sem
@@ -31,6 +33,14 @@ class Player(Thread, ABC):
 
     def __hash__(self) -> int:
         return hash(self.name)
+
+    def get_capture_points(self) -> int:
+        self.__capture_points = sum(tank.get_cp() for tank in self._tanks)
+        return self.__capture_points
+
+    def get_destruction_points(self) -> int:
+        self.__destroyed_points = sum(tank.get_dp() for tank in self._tanks)
+        return self.__destroyed_points
 
     def add(self, player_info: dict, client: Client) -> None:
         self.id = player_info["idx"]
@@ -44,6 +54,7 @@ class Player(Thread, ABC):
 
     def add_map(self, m: Map) -> None:
         self._map = m
+        self._ms_logic = MSLogic(self._map)
 
     def reorder(self) -> None:
         tank_tmp = self._tanks[0]

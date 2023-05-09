@@ -13,7 +13,7 @@ class BotPlayer(Player):
 
     def _play_turn(self) -> None:
         if self._current_player == self.id:
-            self._map.reset_shoot_actions(self.id)
+            self._ms_logic.reset_shoot_actions(self.id)
             for tank in self._tanks:
                 if not self._shoot(tank):
                     self._move(tank)
@@ -23,14 +23,15 @@ class BotPlayer(Player):
         self._client.turn()
 
     def _shoot(self, tank: Tank) -> bool:
-        coord, shoot_list = self._map.shoot(tank)
+        coord, shoot_list = self._ms_logic.shoot(tank)
         if not coord:
             return False
 
-        self._map.draw_shoot_animation(tank, shoot_list)
-        self._map.draw_attacked_hp(shoot_list, tank.get_damage())
+        self._map.get_painter().draw_shoot_animation(tank, shoot_list)
+        self._map.get_painter().draw_attacked_hp(shoot_list, tank.get_damage())
+
         for t in shoot_list:
-            self._map.local_shoot(tank, t)
+            self._ms_logic.local_shoot(tank, t)
 
         self._client.shoot({"vehicle_id": tank.get_id(), "target": {"x": coord.q, "y": coord.r, "z": coord.s}})
         tank.set_bonus_range(0)
@@ -38,10 +39,10 @@ class BotPlayer(Player):
         return True
 
     def _move(self, tank: Tank) -> None:
-        if self._map.is_in_base(tank.get_position()):
+        if self._ms_logic.is_in_base(tank.get_position()):
             return
 
-        move_coord = self._map.move(tank.get_position(), tank.get_sp())
+        move_coord = self._ms_logic.move(tank.get_position(), tank.get_sp())
         if not move_coord:
             return
 
@@ -52,5 +53,5 @@ class BotPlayer(Player):
         target = {"x": move_coord.q, "y": move_coord.r, "z": move_coord.s}
         move_data = {"vehicle_id": tank.get_id(), "target": target}
 
-        self._map.local_move(tank, Hex.dict_to_hex(target))
+        self._ms_logic.local_move(tank, Hex.dict_to_hex(target))
         self._client.move(move_data)
