@@ -1,29 +1,15 @@
 import pygame
 from pygame import Surface
 from pygame.font import Font
-import math
 import random
 from typing import Any, Optional
 
 from src.map.hex import Hex
 from src.vehicles.tank import Tank
-from src.constants import SCREEN_WIDTH, SCREEN_HEIGHT, HEX_SIZE
+from src.constants import SCREEN_WIDTH, SCREEN_HEIGHT, BLACK, WHITE, BASE_COLOR, OBSTACLE_COLOR, HP_COLOR, RED
 
 
 class Map:
-    __BLACK = (0, 0, 0)
-    __WHITE = (255, 255, 255)
-    __GRAY = (127, 127, 127)
-    __HP_GREEN = (2, 113, 72)
-    __RED = (255, 0, 0)
-    __BASE_GREEN = (144, 238, 144)
-    __TANK_RED = (237, 41, 57)
-    __SPAWN_RED = (255, 198, 196)
-    __TANK_BLUE = (70, 191, 224)
-    __SPAWN_BLUE = (173, 216, 230)
-    __TANK_YELLOW = (224, 206, 70)
-    __SPAWN_YELLOW = (255, 250, 205)
-
     def __init__(self, game_map: dict, game_state: dict, players_in_game: dict) -> None:
         pygame.init()
         self.screen: Surface = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -58,7 +44,7 @@ class Map:
 
         for tank_id, tank_info in game_state["vehicles"].items():
             player = players_in_game[tank_info["player_id"]]
-            tank = Tank(int(tank_id), tank_info)
+            tank = Tank(int(tank_id), tank_info, player.tank_color, player.spawn_color)
             self.__tanks[int(tank_id)] = tank
             player.add_tank(tank)
             self.__spawn_points.append(Hex.dict_to_hex(tank_info["spawn_position"]))
@@ -82,52 +68,19 @@ class Map:
                     self.__catapult[new_hex] = 3
 
     def draw(self, current_turn: int, num_turns: int) -> None:
-        self.screen.fill(Map.__WHITE)
-        text = self.__font.render(f"ROUND NUMBER: {current_turn + 1}/{num_turns}", True, Map.__BLACK)
-        self.screen.blit(text, (30, 25))
+        self.__draw_map()
+        self.__draw_turn_number(current_turn, num_turns)
 
-        for h in self.__map:
-            # coordinates of the center of the hex
-            x, y = Hex.hex_to_pixel(h.q, h.r)
-
-            points = [(x + HEX_SIZE * math.cos(angle), y + HEX_SIZE * math.sin(angle))
-                      for angle in [0, math.pi / 3, 2 * math.pi / 3, math.pi, 4 * math.pi / 3, 5 * math.pi / 3]
-                      ]
-            pygame.draw.polygon(self.screen, Map.__BLACK, points, 3)
-
-            # obstacle coloring
-            if h in self.__obstacles:
-                pygame.draw.polygon(self.screen, Map.__GRAY, points, 0)
-                pygame.draw.polygon(self.screen, Map.__BLACK, points, 3)
-
-            # base coloring
-            if h in self.__base:
-                pygame.draw.polygon(self.screen, Map.__BASE_GREEN, points, 0)
-                pygame.draw.polygon(self.screen, Map.__BLACK, points, 3)
-
-            # blue spawn coloring
-            if h.s == 10 and -7 <= h.q <= -3 and -7 <= h.r <= -3:
-                pygame.draw.polygon(self.screen, Map.__SPAWN_BLUE, points, 0)
-                pygame.draw.polygon(self.screen, Map.__BLACK, points, 3)
-
-            # yellow spawn coloring yellow
-            elif h.q == 10 and -7 <= h.s <= -3 and -7 <= h.r <= -3:
-                pygame.draw.polygon(self.screen, Map.__SPAWN_YELLOW, points, 0)
-                pygame.draw.polygon(self.screen, Map.__BLACK, points, 3)
-
-            # red spawn coloring red
-            elif h.r == 10 and -7 <= h.s <= -3 and -7 <= h.q <= -3:
-                pygame.draw.polygon(self.screen, Map.__SPAWN_RED, points, 0)
-                pygame.draw.polygon(self.screen, Map.__BLACK, points, 3)
+        self.__draw_base()
+        self.__draw_obstacles()
 
         self.__draw_special(list(self.__catapult.keys()), "catapult")
         self.__draw_special(self.__heavy_repair, "heavy_repair")
         self.__draw_special(self.__light_repair, "light_repair")
 
-        for t in self.__tanks.values():
-            self.__draw_tank(t)
-
+        self.__draw_tanks_and_spawns()
         self.__draw_hp()
+
         self.__draw_legend()
 
         pygame.display.flip()
@@ -152,6 +105,24 @@ class Map:
             if server_cp != tank_cp:
                 tank.update_cp(server_cp)
 
+    def __draw_map(self) -> None:
+        self.screen.fill(WHITE)
+        for h in self.__map:
+            points = Hex.get_center(h)
+            pygame.draw.polygon(self.screen, BLACK, points, 3)
+
+    def __draw_turn_number(self, current_turn: int, num_turns: int):
+        text = self.__font.render(f"TURN NUMBER: {current_turn + 1}/{num_turns}", True, BLACK)
+        self.screen.blit(text, (30, 25))
+
+    def __draw_base(self) -> None:
+        for h in self.__base:
+            self.__color_hex(h, BASE_COLOR)
+
+    def __draw_obstacles(self) -> None:
+        for h in self.__obstacles:
+            self.__color_hex(h, OBSTACLE_COLOR)
+
     def __draw_special(self, hexes: list[Hex], name: str) -> None:
         image = pygame.image.load(f"src/assets/special_hexes/{name}.png")
         scaled_image = pygame.transform.scale(image, (28, 28))
@@ -159,21 +130,25 @@ class Map:
             x, y = Hex.hex_to_pixel(h.q, h.r)
             self.screen.blit(scaled_image, (x - 14, y - 14))
 
+    def __draw_tanks_and_spawns(self) -> None:
+        for tank in self.__tanks.values():
+            self.__color_hex(tank.get_spawn_position(), tank.spawn_color)
+            self.__draw_tank(tank)
+
     def __draw_tank(self, tank: Tank) -> None:
         image = pygame.image.load(f"src/assets/vehicle_types/{tank.get_type()}.png")
         scaled_image = pygame.transform.scale(image, (28, 28))
-        h, idx = tank.get_position(), tank.get_player_id()
-        if idx == self.__player_ids[0]:
-            color_tuple = Map.__TANK_BLUE
-        elif idx == self.__player_ids[1]:
-            color_tuple = Map.__TANK_RED
-        else:
-            color_tuple = Map.__TANK_YELLOW
+        h = tank.get_position()
         color = pygame.Surface(scaled_image.get_size())
-        color.fill(color_tuple)
+        color.fill(tank.tank_color)
         scaled_image.blit(color, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
         x, y = Hex.hex_to_pixel(h.q, h.r)
         self.screen.blit(scaled_image, (x - 14, y - 14))
+
+    def __color_hex(self, h: Hex, color: tuple) -> None:
+        points = Hex.get_center(h)
+        pygame.draw.polygon(self.screen, color, points, 0)
+        pygame.draw.polygon(self.screen, BLACK, points, 3)
 
     def __draw_hp(self) -> None:
         for tank in self.__tanks.values():
@@ -185,9 +160,9 @@ class Map:
             line_end_g = (x + 18 * ratio_green, y)
             line_start_r = (x + 18 * ratio_green + 1, y)
             line_end_r = (x + 18, y)
-            pygame.draw.line(self.screen, Map.__HP_GREEN, line_start_g, line_end_g, 4)
+            pygame.draw.line(self.screen, HP_COLOR, line_start_g, line_end_g, 4)
             if ratio_green != 1.0:
-                pygame.draw.line(self.screen, Map.__RED, line_start_r, line_end_r, 4)
+                pygame.draw.line(self.screen, RED, line_start_r, line_end_r, 4)
 
     def __draw_legend(self) -> None:
         pass
@@ -198,11 +173,9 @@ class Map:
             h2 = t.get_position()
             x1, y1 = Hex.hex_to_pixel(h1.q, h1.r)
             x2, y2 = Hex.hex_to_pixel(h2.q, h2.r)
-            points = [(x2 + HEX_SIZE * math.cos(angle), y2 + HEX_SIZE * math.sin(angle))
-                      for angle in [0, math.pi / 3, 2 * math.pi / 3, math.pi, 4 * math.pi / 3, 5 * math.pi / 3]
-                      ]
-            pygame.draw.polygon(self.screen, Map.__RED, points, 3)
-            pygame.draw.line(self.screen, Map.__RED, (x1, y1), (x2, y2), 5)
+            points = Hex.get_center(h2)
+            pygame.draw.polygon(self.screen, RED, points, 3)
+            pygame.draw.line(self.screen, RED, (x1, y1), (x2, y2), 5)
 
         pygame.display.flip()
 
@@ -220,10 +193,10 @@ class Map:
             line_start_r = (x + 18 * ratio_green + 1, y)
             line_end_r = (x + 18, y)
             if ratio_green != 0:
-                pygame.draw.line(self.screen, Map.__HP_GREEN, line_start_g, line_end_g, 4)
+                pygame.draw.line(self.screen, HP_COLOR, line_start_g, line_end_g, 4)
             elif ratio_green == 0:
                 line_start_r = line_start_g
-            pygame.draw.line(self.screen, Map.__RED, line_start_r, line_end_r, 4)
+            pygame.draw.line(self.screen, RED, line_start_r, line_end_r, 4)
 
         pygame.display.flip()
 

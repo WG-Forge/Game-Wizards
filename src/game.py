@@ -5,9 +5,8 @@ from typing import Optional
 
 from src.client.game_client import Client
 from src.map.game_map import Map
+from src.players.player_factory import PlayerFactory
 from src.players.player import Player
-from src.players.bot_player import BotPlayer
-from src.players.observer import Observer
 
 
 class Game:
@@ -47,7 +46,16 @@ class Game:
 
         self.__all_players += 1
 
-        player: Player = self.__create_player(name, password, is_observer)
+        player: Player
+        player_type: str
+
+        if is_observer:
+            player_type = "observer"
+        else:
+            player_type = "bot_player"
+
+        player = PlayerFactory.create_player(player_type, name, self.__turn_played_sem, self.__current_player_idx,
+                                             self.__game_players-1, password, is_observer)
 
         self.__waiting_players.append(player)
 
@@ -141,9 +149,3 @@ class Game:
 
         self.__players_in_game[player.id] = player
         self.__current_client = self.__all_clients[player]
-
-    def __create_player(self, name: str, password: str = None, is_observer: bool = None) -> Player:
-        if is_observer:
-            return Observer(name, password, is_observer, self.__turn_played_sem, self.__current_player_idx)
-        else:
-            return BotPlayer(name, password, is_observer, self.__turn_played_sem, self.__current_player_idx)

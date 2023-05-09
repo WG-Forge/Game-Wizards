@@ -5,11 +5,12 @@ from typing import Optional
 from src.vehicles.tank import Tank
 from src.client.game_client import Client
 from src.map.game_map import Map
+from src.constants import TANK_COLORS, SPAWN_COLORS
 
 
 class Player(Thread, ABC):
     def __init__(self, name: str, password: str, is_observer: bool, turn_played_sem: Semaphore,
-                 current_player: int) -> None:
+                 current_player: int, player_index: int) -> None:
         super().__init__(daemon=True)
         self.name: str = name
         self.password: str = password
@@ -21,8 +22,12 @@ class Player(Thread, ABC):
         self._client: Optional[Client] = None
         self._map: Optional[Map] = None
         self._current_player: int = current_player
+
         self.__turn_played_sem: Semaphore = turn_played_sem
         self.next_turn_sem: Semaphore = Semaphore(0)
+
+        self.tank_color: tuple = TANK_COLORS[player_index]
+        self.spawn_color: tuple = SPAWN_COLORS[player_index]
 
     def __hash__(self) -> int:
         return hash(self.name)

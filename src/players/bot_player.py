@@ -8,8 +8,8 @@ from src.vehicles.tank import Tank
 
 class BotPlayer(Player):
     def __init__(self, name: str, password: str, is_observer: bool, turn_played_sem: Semaphore,
-                 current_player: int) -> None:
-        super().__init__(name, password, is_observer, turn_played_sem, current_player)
+                 current_player: int, player_index: int) -> None:
+        super().__init__(name, password, is_observer, turn_played_sem, current_player, player_index)
 
     def _play_turn(self) -> None:
         if self._current_player == self.id:

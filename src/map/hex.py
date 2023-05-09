@@ -89,3 +89,11 @@ class Hex:
     @staticmethod
     def distance(h1: Hex, h2: Hex) -> int:
         return int((abs(h1.q - h2.q) + abs(h1.r - h2.r) + abs(h1.s - h2.s)) / 2)
+
+    @staticmethod
+    def get_center(h: Hex) -> list[tuple]:
+        x, y = Hex.hex_to_pixel(h.q, h.r)
+        points = [(x + HEX_SIZE * math.cos(angle), y + HEX_SIZE * math.sin(angle))
+                  for angle in [0, math.pi / 3, 2 * math.pi / 3, math.pi, 4 * math.pi / 3, 5 * math.pi / 3]
+                  ]
+        return points

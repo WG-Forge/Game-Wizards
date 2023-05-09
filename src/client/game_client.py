@@ -1,17 +1,13 @@
 import socket
 import json
 
-from src.constants import Action, Result
+from src.constants import Action, Result, SERVER_HOST, SERVER_PORT, MAX_MESSAGE_SIZE
 
 
 class Client:
-    __server_host = "wgforge-srv.wargaming.net"
-    __server_port = 443
-    __MAX_MESSAGE_SIZE = 8192
-
     def __init__(self) -> None:
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.__socket.connect((Client.__server_host, Client.__server_port))
+        self.__socket.connect((SERVER_HOST, SERVER_PORT))
 
     def login(self, name: str, password: str = None, game: str = None, num_turns: int = None,
               num_players: int = None, is_observer: bool = None, is_full: bool = None) -> dict:
@@ -88,7 +84,7 @@ class Client:
 
         self.__socket.sendall(msg)
 
-        response_msg = self.__socket.recv(self.__MAX_MESSAGE_SIZE)
+        response_msg = self.__socket.recv(MAX_MESSAGE_SIZE)
 
         response_code, response_data = self.__parse_response(response_msg)
 

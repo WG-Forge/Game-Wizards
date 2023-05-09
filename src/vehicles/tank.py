@@ -3,20 +3,26 @@ from src.constants import tank_characteristics
 
 
 class Tank:
-    def __init__(self, tank_id: int, tank_data: dict) -> None:
+    def __init__(self, tank_id: int, tank_data: dict, tank_color: tuple, spawn_color: tuple) -> None:
         self.__tank_id: int = tank_id
         self.__player_id: int = tank_data["player_id"]
         self.__tank_type: str = tank_data["vehicle_type"]
+
         self.__hp: int = tank_data["health"]
         self.__full_hp: int = self.__hp
         self.__sp: int = tank_characteristics[self.__tank_type]["sp"]
+
         self.__min_range: int = tank_characteristics[self.__tank_type]["min_range"]
         self.__max_range: int = tank_characteristics[self.__tank_type]["max_range"]
         self.__bonus_range: int = 0
         self.__damage: int = 1
+
         self.__capture_points: int = tank_data["capture_points"]
         self.__spawn_position: Hex = Hex.dict_to_hex(tank_data["spawn_position"])
         self.__position: Hex = self.__spawn_position
+
+        self.tank_color: tuple = tank_color
+        self.spawn_color: tuple = spawn_color
 
     def __str__(self) -> str:
         return f"{self.__tank_id}: {self.__position}"

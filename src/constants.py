@@ -1,9 +1,24 @@
 from enum import IntEnum
 
-# Screen constants
+# Server info
+SERVER_HOST = "wgforge-srv.wargaming.net"
+SERVER_PORT = 443
+MAX_MESSAGE_SIZE = 8192
+
+# Screen info
 SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 800
 HEX_SIZE = 21
+
+# Colors
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+BASE_COLOR = (144, 238, 144)
+OBSTACLE_COLOR = (127, 127, 127)
+HP_COLOR = (2, 113, 72)
+RED = (255, 0, 0)
+TANK_COLORS = ((237, 41, 57), (70, 191, 224), (224, 206, 70))
+SPAWN_COLORS = ((255, 198, 196), (173, 216, 230), (255, 250, 205))
 
 
 # Client enums
@@ -28,15 +43,15 @@ class Result(IntEnum):
     INTERNAL_SERVER_ERROR = 500
 
 
-# Tanks constants
+# Tank info
 tank_characteristics: dict = {
+    "spg": {
+        "sp": 1,
+        "min_range": 3,
+        "max_range": 3
+    },
     "light_tank": {
         "sp": 3,
-        "min_range": 2,
-        "max_range": 2
-    },
-    "medium_tank": {
-        "sp": 2,
         "min_range": 2,
         "max_range": 2
     },
@@ -45,10 +60,10 @@ tank_characteristics: dict = {
         "min_range": 1,
         "max_range": 2
     },
-    "spg": {
-        "sp": 1,
-        "min_range": 3,
-        "max_range": 3
+    "medium_tank": {
+        "sp": 2,
+        "min_range": 2,
+        "max_range": 2
     },
     "at_spg": {
         "sp": 1,
