@@ -79,7 +79,7 @@ class Map:
             tank_cp = tank.get_cp()
 
             if server_position != tank_position:
-                self.local_move(tank, server_position)
+                self.move_update_data(tank, server_position)
             if server_hp != tank_hp:
                 tank.update_hp(server_hp)
             if server_cp != tank_cp:
