@@ -7,7 +7,7 @@ from src.vehicles.tank import Tank
 
 class Map:
     def __init__(self, game_map: dict, game_state: dict, players_in_game: dict) -> None:
-        self.__map: dict[Hex, dict] = {}  # in order not to import Map in Painter
+        self.__map: dict[Hex, dict] = {}
         self.__painter: Optional[Painter] = None
         self.__tanks: dict[int, Tank] = {}
         self.__tank_positions: dict[int, Hex] = {}
@@ -25,6 +25,7 @@ class Map:
 
     def __initialize_map(self, game_map: dict, game_state: dict, players_in_game: dict) -> None:
         self.__map = {h: {"type": "empty", "tank": None} for h in Hex.hex_spiral(Hex(0, 0, 0), game_map["size"])}
+
         for idx, player in players_in_game.items():
             if not player.is_observer:
                 self.__players.append(player)
@@ -57,7 +58,7 @@ class Map:
                     self.__map[new_hex]["type"] = "light_repair"
                     self.__light_repair.append(new_hex)
                 elif h == "hard_repair":
-                    self.__map[new_hex]["type"] = "hard_repair"
+                    self.__map[new_hex]["type"] = "heavy_repair"
                     self.__heavy_repair.append(new_hex)
                 elif h == "catapult":
                     self.__map[new_hex]["type"] = "catapult"
@@ -78,9 +79,7 @@ class Map:
             tank_cp = tank.get_cp()
 
             if server_position != tank_position:
-                # local movement
-                self.__tank_positions[tank.get_id()] = server_position
-                tank.update_position(server_position)
+                self.local_move(tank, server_position)
             if server_hp != tank_hp:
                 tank.update_hp(server_hp)
             if server_cp != tank_cp:
@@ -110,20 +109,24 @@ class Map:
     def get_spawn(self) -> list[Hex]:
         return self.__spawn
 
-    def get_catapult(self) -> dict[Hex, int]:
-        return self.__catapult
-
-    def get_heavy_repair(self) -> list[Hex]:
-        return self.__heavy_repair
-
-    def get_light_repair(self) -> list[Hex]:
-        return self.__light_repair
-
-    def get_players(self) -> list[int]:
+    def get_players(self) -> list:
         return self.__players
 
     def get_shoot_actions(self) -> dict[int, Any]:
         return self.__shoot_actions
+
+    def move_update_data(self, tank: Tank, coord: Hex) -> None:
+        self.__tank_positions[tank.get_id()] = coord
+        tank.update_position(coord)
+
+    def shoot_update_data(self, tank: Tank, tank2: Tank) -> None:
+        if tank2.get_hp() - tank.get_damage() <= 0:
+            tank.update_dp(tank.get_dp() + tank2.get_full_hp())
+            tank2.reset()
+        else:
+            tank2.update_hp(tank2.get_hp() - tank.get_damage())
+
+        self.__shoot_actions[tank.get_player_id()].append(tank2.get_player_id())
 
     def catapult_check(self, tank: Tank, move_coord: Hex) -> None:
         if move_coord in self.__catapult.keys() and self.__catapult[move_coord] > 0:

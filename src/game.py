@@ -88,20 +88,19 @@ class Game:
             for _ in range(self.__all_players):
                 self.__turn_played_sem.acquire()
 
-            self.__update_game(self.__current_client.game_state())
+            self.__update_game()
 
         self.__end_game()
 
-    def __update_game(self, game_state: dict) -> None:
-        self.__current_turn = game_state["current_turn"]
-        if game_state["finished"] or self.__current_turn == self.__num_turns:
-            self.__running = False
-            self.__winner = game_state["winner"]
-            return
+    def __update_game(self) -> None:
+        game_state = self.__current_client.game_state()
 
+        self.__current_turn = game_state["current_turn"]
         self.__current_player_idx = game_state["current_player_idx"]
-        self.__current_player = self.__players_in_game[self.__current_player_idx]
-        self.__current_client = self.__all_clients[self.__current_player]
+
+        if self.__current_player_idx != 0:
+            self.__current_player = self.__players_in_game[self.__current_player_idx]
+            self.__current_client = self.__all_clients[self.__current_player]
 
         for p in self.__players_in_game.values():
             p.set_curr(self.__current_player_idx)
@@ -111,6 +110,12 @@ class Game:
               f"current player: {self.__current_player.name}")
 
         self.__map.update_map(game_state)
+
+        if game_state["finished"]:
+            self.__winner = game_state["winner"]
+
+            if game_state["current_round"] == self.__num_rounds:
+                self.__running = False
 
     def __initialize_game(self) -> None:
         game_map: dict = self.__current_client.map()
@@ -124,7 +129,7 @@ class Game:
         for p in self.__players_in_game.values():
             p.add_map(self.__map)
 
-        self.__update_game(game_state)
+        self.__update_game()
 
     def __end_game(self) -> None:
         if self.__winner:

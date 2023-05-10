@@ -82,8 +82,8 @@ class Tank:
     def update_cp(self, new_cp: int) -> None:
         self.__capture_points = new_cp
 
-    def update_dp(self, dmg: int) -> None:
-        self.__destruction_points += dmg
+    def update_dp(self, new_dp: int) -> None:
+        self.__destruction_points = new_dp
 
     def set_bonus_range(self, bonus_range: int) -> None:
         self.__bonus_range = bonus_range

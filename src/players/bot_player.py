@@ -31,7 +31,7 @@ class BotPlayer(Player):
         self._map.get_painter().draw_attacked_hp(shoot_list, tank.get_damage())
 
         for t in shoot_list:
-            self._ms_logic.local_shoot(tank, t)
+            self._map.shoot_update_data(tank, t)
 
         self._client.shoot({"vehicle_id": tank.get_id(), "target": {"x": coord.q, "y": coord.r, "z": coord.s}})
         tank.set_bonus_range(0)
@@ -53,5 +53,5 @@ class BotPlayer(Player):
         target = {"x": move_coord.q, "y": move_coord.r, "z": move_coord.s}
         move_data = {"vehicle_id": tank.get_id(), "target": target}
 
-        self._ms_logic.local_move(tank, Hex.dict_to_hex(target))
+        self._map.move_update_data(tank, Hex.dict_to_hex(target))
         self._client.move(move_data)

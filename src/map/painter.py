@@ -8,13 +8,13 @@ from src.constants import SCREEN_WIDTH, SCREEN_HEIGHT, BLACK, WHITE, BASE_COLOR,
 
 
 class Painter:
-    def __init__(self, map: dict, players: list):
+    def __init__(self, game_map: dict, players: list):
         pygame.init()
-        self.screen: Surface = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Game Wizards")
-        self.__font_size: int = 24
-        self.__font: Font = pygame.font.Font(None, self.__font_size)
-        self.__map: dict[Hex, dict] = map
+        self.screen: Surface = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.__font_size: int = 21
+        self.__font: Font = pygame.font.Font("src/assets/BF_Modernista-Regular.ttf", self.__font_size)
+        self.__map: dict[Hex, dict] = game_map
         self.__players: list = players
 
         self.__tanks: dict[int, Tank] = {d["tank"].get_id(): d["tank"]
@@ -25,17 +25,17 @@ class Painter:
         self.__draw_turn_number(current_turn, num_turns)
         self.__draw_scoreboard()
 
-        for hex, characteristics in self.__map.items():
+        for h, characteristics in self.__map.items():
             if characteristics["type"] == "base":
-                self.__draw_base(hex)
+                self.__draw_base(h)
             elif characteristics["type"] == "obstacle":
-                self.__draw_obstacles(hex)
+                self.__draw_obstacles(h)
             elif characteristics["type"] == "catapult":
-                self.__draw_special(hex, "catapult")
+                self.__draw_special(h, "catapult")
             elif characteristics["type"] == "heavy_repair":
-                self.__draw_special(hex, "heavy_repair")
+                self.__draw_special(h, "heavy_repair")
             elif characteristics["type"] == "light_repair":
-                self.__draw_special(hex, "light_repair")
+                self.__draw_special(h, "light_repair")
 
         self.__draw_tanks_and_spawns()
         self.__draw_hp()
@@ -100,8 +100,54 @@ class Painter:
             if ratio_green != 1.0:
                 pygame.draw.line(self.screen, RED, line_start_r, line_end_r, 4)
 
-    def __draw_legend(self) -> None:
-        pass
+    def __draw_legend(self) -> None:  # spg, light, heavy, medium, at_spg
+        spg = pygame.image.load("src/assets/vehicle_types/spg.png")
+        scaled_image = pygame.transform.scale(spg, (35, 35))
+        self.screen.blit(scaled_image, (950, 50))
+        text = self.__font.render("SPG", True, BLACK)
+        self.screen.blit(text, (990, 55))
+
+        lt = pygame.image.load("src/assets/vehicle_types/light_tank.png")
+        scaled_image = pygame.transform.scale(lt, (35, 35))
+        self.screen.blit(scaled_image, (950, 90))
+        text = self.__font.render("Light Tank", True, BLACK)
+        self.screen.blit(text, (990, 95))
+
+        ht = pygame.image.load("src/assets/vehicle_types/heavy_tank.png")
+        scaled_image = pygame.transform.scale(ht, (35, 35))
+        self.screen.blit(scaled_image, (950, 130))
+        text = self.__font.render("Heavy Tank", True, BLACK)
+        self.screen.blit(text, (990, 135))
+
+        mt = pygame.image.load("src/assets/vehicle_types/medium_tank.png")
+        scaled_image = pygame.transform.scale(mt, (35, 35))
+        self.screen.blit(scaled_image, (950, 170))
+        text = self.__font.render("Medium Tank", True, BLACK)
+        self.screen.blit(text, (990, 175))
+
+        at_spg = pygame.image.load("src/assets/vehicle_types/at_spg.png")
+        scaled_image = pygame.transform.scale(at_spg, (35, 35))
+        self.screen.blit(scaled_image, (950, 210))
+        text = self.__font.render("Tank destroyer", True, BLACK)
+        self.screen.blit(text, (990, 215))
+
+        catapult = pygame.image.load("src/assets/special_hexes/catapult.png")
+        scaled_image = pygame.transform.scale(catapult, (35, 35))
+        self.screen.blit(scaled_image, (950, 610))
+        text = self.__font.render("Catapult", True, BLACK)
+        self.screen.blit(text, (990, 615))
+
+        hr = pygame.image.load("src/assets/special_hexes/heavy_repair.png")
+        scaled_image = pygame.transform.scale(hr, (35, 35))
+        self.screen.blit(scaled_image, (950, 650))
+        text = self.__font.render("Heavy repair", True, BLACK)
+        self.screen.blit(text, (990, 655))
+
+        lr = pygame.image.load("src/assets/special_hexes/light_repair.png")
+        scaled_image = pygame.transform.scale(lr, (35, 35))
+        self.screen.blit(scaled_image, (950, 690))
+        text = self.__font.render("Light repair", True, BLACK)
+        self.screen.blit(text, (990, 695))
 
     def __draw_scoreboard(self) -> None:
 

@@ -9,8 +9,8 @@ from src.vehicles.tank import Tank
 # move-shoot logic
 class MSLogic:
 
-    def __init__(self, map: Map):
-        self.__map = map
+    def __init__(self, game_map: Map):
+        self.__map = game_map
 
     def move(self, start: Hex, movement: int) -> Hex:
         visited = []
@@ -35,19 +35,6 @@ class MSLogic:
             move_to = [h for h in visited if Hex.distance(Hex(0, 0, 0), h) == d]
 
         return random.choice(move_to) if visited else None
-
-    def local_move(self, tank: Tank, coord: Hex) -> None:
-        self.__map.get_tank_positions()[tank.get_id()] = coord
-        tank.update_position(coord)
-
-    def local_shoot(self, tank: Tank, tank2: Tank) -> None:
-        if tank2.get_hp() - tank.get_damage() <= 0:
-            tank.update_dp(tank2.get_full_hp())
-            tank2.reset()
-        else:
-            tank2.update_hp(tank2.get_hp() - tank.get_damage())
-
-        self.__map.get_shoot_actions()[tank.get_player_id()].append(tank2.get_player_id())
 
     def shoot(self, tank: Tank) -> tuple[Optional[Hex], Optional[list[Tank]]]:
         if tank.get_type() != "at_spg":
