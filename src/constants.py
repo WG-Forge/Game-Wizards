@@ -5,6 +5,10 @@ SERVER_HOST = "wgforge-srv.wargaming.net"
 SERVER_PORT = 443
 MAX_MESSAGE_SIZE = 8192
 
+HOST_PORT = 443
+HOST_NAME = "wgforge-srv.wargaming.net"
+BYTES_IN_INT = 4
+
 # Screen info
 SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 800
@@ -71,3 +75,27 @@ tank_characteristics: dict = {
         "max_range": 3
     }
 }
+
+# Image paths
+SPG_PATH = "src/assets/vehicle_types/spg.png"
+LT_PATH = "src/assets/vehicle_types/light_tank.png"
+HT_PATH = "src/assets/vehicle_types/heavy_tank.png"
+MT_PATH = "src/assets/vehicle_types/medium_tank.png"
+TD_PATH = "src/assets/vehicle_types/at_spg.png"
+
+CATA_PATH = "src/assets/special_hexes/catapult.png"
+HR_PATH = "src/assets/special_hexes/heavy_repair.png"
+LR_PATH = "src/assets/special_hexes/light_repair.png"
+
+BACKGROUND_PATH = "src/assets/screen/background.jpg"
+ICON_PATH = "src/assets/screen/icon.png"
+
+# Legend
+LEGEND_ORDER = [SPG_PATH, LT_PATH, HT_PATH, MT_PATH, TD_PATH, CATA_PATH, HR_PATH, LR_PATH]
+LEGEND_POSITIONS = [(-15, 12, 3), (-14, 12, 2), (-13, 12, 1), (-12, 12, 0),
+                    (-11, 12, -1), (0, 12, -12), (1, 12, -13), (2, 12, -14)]
+LEGEND_TEXT = ["SPG", "LIGHT TANK", "HEAVY TANK", "MEDIUM TANK", "TANK DESTROYER",
+               "CATAPULT", "HEAVY REPAIR", "LIGHT REPAIR"]
+LEGEND_TEXT_POSITION = [(1005, 56), (1005, 93), (1005, 130), (1005, 167),
+                        (1005, 204), (1005, 601), (1005, 638), (1005, 675)]
+LEGEND_NAME = ["spg", "light_tank", "heavy_tank", "medium_tank", "at_spg", "catapult", "heavy_repair", "light_repair"]

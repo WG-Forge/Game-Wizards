@@ -10,10 +10,13 @@ class Hex:
         (-1, 0, 1), (-1, 1, 0), (0, 1, -1),
     ]
 
-    def __init__(self, q: int, r: int, s: int) -> None:
-        self.q = q
-        self.r = r
-        self.s = s
+    def __init__(self, q: int = None, r: int = None, s: int = None, t: tuple = None) -> None:
+        if not t:
+            self.q = q
+            self.r = r
+            self.s = s
+        else:
+            self.q, self.r, self.s = t
 
     def __str__(self) -> str:
         return f"({self.q}, {self.r}, {self.s})"

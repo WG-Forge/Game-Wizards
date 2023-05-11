@@ -4,25 +4,45 @@ from pygame.font import Font
 
 from src.map.hex import Hex
 from src.vehicles.tank import Tank
-from src.constants import SCREEN_WIDTH, SCREEN_HEIGHT, BLACK, WHITE, BASE_COLOR, OBSTACLE_COLOR, HP_COLOR, RED
+from src.constants import SCREEN_WIDTH, SCREEN_HEIGHT, BLACK, WHITE, BASE_COLOR, OBSTACLE_COLOR, HP_COLOR, RED, \
+    LEGEND_ORDER, LEGEND_POSITIONS, LEGEND_TEXT, LEGEND_TEXT_POSITION, LEGEND_NAME, BACKGROUND_PATH
 
 
 class Painter:
     def __init__(self, game_map: dict, players: list):
         pygame.init()
         pygame.display.set_caption("Game Wizards")
+        pygame.display.set_icon(pygame.image.load("src/assets/screen/icon.png"))
         self.screen: Surface = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         self.__font_size: int = 21
-        self.__font: Font = pygame.font.Font("src/assets/BF_Modernista-Regular.ttf", self.__font_size)
+        self.__font: Font = pygame.font.Font("src/assets/screen/BF_Modernista-Regular.ttf", self.__font_size)
         self.__map: dict[Hex, dict] = game_map
         self.__players: list = players
 
         self.__tanks: dict[int, Tank] = {d["tank"].get_id(): d["tank"]
                                          for d in self.__map.values() if d["tank"] is not None}
+        self.__images: dict[str, Surface] = {}
+        self.__load_images()
 
-    def draw(self, current_turn: int, num_turns: int) -> None:
+    def __load_images(self) -> None:
+        self.__images: dict = {
+            "spg": Painter.__load_image(LEGEND_ORDER[0]),
+            "light_tank": Painter.__load_image(LEGEND_ORDER[1]),
+            "heavy_tank": Painter.__load_image(LEGEND_ORDER[2]),
+            "medium_tank": Painter.__load_image(LEGEND_ORDER[3]),
+            "at_spg": Painter.__load_image(LEGEND_ORDER[4]),
+            "catapult": Painter.__load_image(LEGEND_ORDER[5]),
+            "heavy_repair": Painter.__load_image(LEGEND_ORDER[6]),
+            "light_repair": Painter.__load_image(LEGEND_ORDER[7])
+        }
+
+    @staticmethod
+    def __load_image(img_path: str) -> Surface:
+        return pygame.image.load(img_path).convert_alpha()
+
+    def draw(self, current_turn: int, num_turns: int, current_round: int, num_rounds: int) -> None:
         self.__draw_map()
-        self.__draw_turn_number(current_turn, num_turns)
+        self.__draw_turn_and_round(current_turn, num_turns, current_round, num_rounds)
         self.__draw_scoreboard()
 
         for h, characteristics in self.__map.items():
@@ -45,14 +65,16 @@ class Painter:
         pygame.display.flip()
 
     def __draw_map(self) -> None:
-        self.screen.fill(WHITE)
+        image = pygame.transform.scale(pygame.image.load(BACKGROUND_PATH), (SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.screen.blit(image, (0, 0))
         for h in self.__map.keys():
-            points = Hex.get_center(h)
-            pygame.draw.polygon(self.screen, BLACK, points, 3)
+            self.__color_hex(h, WHITE)
 
-    def __draw_turn_number(self, current_turn: int, num_turns: int):
-        text = self.__font.render(f"TURN NUMBER: {current_turn + 1}/{num_turns}", True, BLACK)
-        self.screen.blit(text, (30, 25))
+    def __draw_turn_and_round(self, current_turn: int, num_turns: int, current_round: int, num_rounds: int):
+        text = self.__font.render(f"TURN: {current_turn}/{num_turns}", True, BLACK)
+        self.screen.blit(text, (400, 25))
+        text = self.__font.render(f"ROUND: {current_round}/{num_rounds}", True, BLACK)
+        self.screen.blit(text, (700, 25))
 
     def __draw_base(self, h: Hex) -> None:
         self.__color_hex(h, BASE_COLOR)
@@ -61,7 +83,7 @@ class Painter:
         self.__color_hex(h, OBSTACLE_COLOR)
 
     def __draw_special(self, h: Hex, name: str) -> None:
-        image = pygame.image.load(f"src/assets/special_hexes/{name}.png")
+        image = self.__images[name]
         scaled_image = pygame.transform.scale(image, (28, 28))
         x, y = Hex.hex_to_pixel(h.q, h.r)
         self.screen.blit(scaled_image, (x - 14, y - 14))
@@ -71,8 +93,8 @@ class Painter:
             self.__color_hex(tank.get_spawn_position(), tank.spawn_color)
             self.__draw_tank(tank)
 
-    def __draw_tank(self, tank: Tank) -> None:
-        image = pygame.image.load(f"src/assets/vehicle_types/{tank.get_type()}.png")
+    def __draw_tank(self, tank: Tank = None) -> None:
+        image = self.__images[tank.get_type()]
         scaled_image = pygame.transform.scale(image, (28, 28))
         h = tank.get_position()
         color = pygame.Surface(scaled_image.get_size())
@@ -100,54 +122,15 @@ class Painter:
             if ratio_green != 1.0:
                 pygame.draw.line(self.screen, RED, line_start_r, line_end_r, 4)
 
-    def __draw_legend(self) -> None:  # spg, light, heavy, medium, at_spg
-        spg = pygame.image.load("src/assets/vehicle_types/spg.png")
-        scaled_image = pygame.transform.scale(spg, (35, 35))
-        self.screen.blit(scaled_image, (950, 50))
-        text = self.__font.render("SPG", True, BLACK)
-        self.screen.blit(text, (990, 55))
-
-        lt = pygame.image.load("src/assets/vehicle_types/light_tank.png")
-        scaled_image = pygame.transform.scale(lt, (35, 35))
-        self.screen.blit(scaled_image, (950, 90))
-        text = self.__font.render("Light Tank", True, BLACK)
-        self.screen.blit(text, (990, 95))
-
-        ht = pygame.image.load("src/assets/vehicle_types/heavy_tank.png")
-        scaled_image = pygame.transform.scale(ht, (35, 35))
-        self.screen.blit(scaled_image, (950, 130))
-        text = self.__font.render("Heavy Tank", True, BLACK)
-        self.screen.blit(text, (990, 135))
-
-        mt = pygame.image.load("src/assets/vehicle_types/medium_tank.png")
-        scaled_image = pygame.transform.scale(mt, (35, 35))
-        self.screen.blit(scaled_image, (950, 170))
-        text = self.__font.render("Medium Tank", True, BLACK)
-        self.screen.blit(text, (990, 175))
-
-        at_spg = pygame.image.load("src/assets/vehicle_types/at_spg.png")
-        scaled_image = pygame.transform.scale(at_spg, (35, 35))
-        self.screen.blit(scaled_image, (950, 210))
-        text = self.__font.render("Tank destroyer", True, BLACK)
-        self.screen.blit(text, (990, 215))
-
-        catapult = pygame.image.load("src/assets/special_hexes/catapult.png")
-        scaled_image = pygame.transform.scale(catapult, (35, 35))
-        self.screen.blit(scaled_image, (950, 610))
-        text = self.__font.render("Catapult", True, BLACK)
-        self.screen.blit(text, (990, 615))
-
-        hr = pygame.image.load("src/assets/special_hexes/heavy_repair.png")
-        scaled_image = pygame.transform.scale(hr, (35, 35))
-        self.screen.blit(scaled_image, (950, 650))
-        text = self.__font.render("Heavy repair", True, BLACK)
-        self.screen.blit(text, (990, 655))
-
-        lr = pygame.image.load("src/assets/special_hexes/light_repair.png")
-        scaled_image = pygame.transform.scale(lr, (35, 35))
-        self.screen.blit(scaled_image, (950, 690))
-        text = self.__font.render("Light repair", True, BLACK)
-        self.screen.blit(text, (990, 695))
+    def __draw_legend(self) -> None:
+        for i in range(8):
+            h = Hex(t=LEGEND_POSITIONS[i])
+            self.__color_hex(h, OBSTACLE_COLOR)
+            scaled_image = pygame.transform.scale(self.__images[LEGEND_NAME[i]], (28, 28))
+            x, y = Hex.hex_to_pixel(h.q, h.r)
+            self.screen.blit(scaled_image, (x - 14, y - 14))
+            text = self.__font.render(LEGEND_TEXT[i], True, BLACK)
+            self.screen.blit(text, LEGEND_TEXT_POSITION[i])
 
     def __draw_scoreboard(self) -> None:
 

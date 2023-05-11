@@ -1,5 +1,4 @@
 from threading import Semaphore
-from time import sleep
 
 from src.players.player import Player
 from src.map.hex import Hex
@@ -8,8 +7,8 @@ from src.vehicles.tank import Tank
 
 class BotPlayer(Player):
     def __init__(self, name: str, password: str, is_observer: bool, turn_played_sem: Semaphore,
-                 current_player: int, player_index: int) -> None:
-        super().__init__(name, password, is_observer, turn_played_sem, current_player, player_index)
+                 current_player: int, player_index: int, running: bool) -> None:
+        super().__init__(name, password, is_observer, turn_played_sem, current_player, player_index, running)
 
     def _play_turn(self) -> None:
         if self._current_player == self.id:
@@ -18,8 +17,6 @@ class BotPlayer(Player):
                 if not self._shoot(tank):
                     self._move(tank)
 
-        # Uncomment for slower game
-        # sleep(1)
         self._client.turn()
 
     def _shoot(self, tank: Tank) -> bool:

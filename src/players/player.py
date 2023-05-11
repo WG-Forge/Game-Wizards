@@ -11,19 +11,23 @@ from src.constants import TANK_COLORS, SPAWN_COLORS
 
 class Player(Thread, ABC):
     def __init__(self, name: str, password: str, is_observer: bool, turn_played_sem: Semaphore,
-                 current_player: int, player_index: int) -> None:
+                 current_player: int, player_index: int, running: bool) -> None:
         super().__init__(daemon=True)
+
         self.name: str = name
         self.password: str = password
+        self.is_observer: bool = is_observer
+        self.id: Optional[int] = None
+
         self._tanks: list[Tank] = []
         self.__capture_points: int = 0
         self.__destroyed_points: int = 0
-        self.is_observer: bool = is_observer
-        self.id: Optional[int] = None
+
         self._client: Optional[Client] = None
         self._map: Optional[Map] = None
         self._ms_logic: Optional[MSLogic] = None
         self._current_player: int = current_player
+        self.__running = running
 
         self.__turn_played_sem: Semaphore = turn_played_sem
         self.next_turn_sem: Semaphore = Semaphore(0)
@@ -33,6 +37,9 @@ class Player(Thread, ABC):
 
     def __hash__(self) -> int:
         return hash(self.name)
+
+    def __repr__(self) -> str:
+        return f"Player {self.id}: {self.name}"
 
     def get_capture_points(self) -> int:
         self.__capture_points = sum(tank.get_cp() for tank in self._tanks)
@@ -52,7 +59,7 @@ class Player(Thread, ABC):
     def add_tank(self, tank: Tank) -> None:
         self._tanks.append(tank)
 
-    def add_map(self, m: Map) -> None:
+    def round_update(self, m: Map) -> None:
         self._map = m
         self._ms_logic = MSLogic(self._map)
 
@@ -67,13 +74,23 @@ class Player(Thread, ABC):
     def set_curr(self, curr: int) -> None:
         self._current_player = curr
 
+    def stop_player(self) -> None:
+        self.__running = False
+
+    def round_reset(self) -> None:
+        self._tanks = []
+
     def run(self) -> None:
-        while True:
+        while self.__running:
             self.next_turn_sem.acquire()
 
-            self._play_turn()
+            try:
+                if not self.__running:
+                    break
 
-            self.__turn_played_sem.release()
+                self._play_turn()
+            finally:
+                self.__turn_played_sem.release()
 
     @abstractmethod
     def _play_turn(self) -> None:

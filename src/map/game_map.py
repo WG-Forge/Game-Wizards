@@ -85,8 +85,8 @@ class Map:
             if server_cp != tank_cp:
                 tank.update_cp(server_cp)
 
-    def draw_map(self, current_turn: int, num_of_turns: int) -> None:
-        self.__painter.draw(current_turn, num_of_turns)
+    def draw_map(self, current_turn: int, num_turns: int, current_round: int, num_rounds: int) -> None:
+        self.__painter.draw(current_turn, num_turns, current_round, num_rounds)
 
     def get_painter(self) -> Painter:
         return self.__painter
