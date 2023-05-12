@@ -72,14 +72,14 @@ class Game(Thread):
             if not self.__round_started:
                 self.__update_round()
 
+            self.__update_turn()
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
 
-            self.__update_turn()
             self.map.draw_map(self.current_turn, self.num_turns, self.current_round, self.num_rounds)
 
-            print(self.__clock.get_fps())
             self.__clock.tick(60)
 
             for player in self.__players_in_game.values():
@@ -120,7 +120,6 @@ class Game(Thread):
 
     def __update_turn(self) -> None:
         game_state = self.__current_client.game_state()
-        print(game_state)
 
         self.current_turn = game_state["current_turn"]
         self.__current_player_idx = game_state["current_player_idx"]
@@ -182,7 +181,7 @@ class Game(Thread):
 
             min_points = min(min_points, win_points)
 
-        if max_points != min_points:
+        if max_points != min_points or len(self.__player_wins) == 1:
             print(f"Game winner is {winner}!")
         else:
             print("Game is Draw!")

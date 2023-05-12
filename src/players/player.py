@@ -12,7 +12,7 @@ from src.constants import TANK_COLORS, SPAWN_COLORS
 class Player(Thread, ABC):
     def __init__(self, name: str, password: str, is_observer: bool, turn_played_sem: Semaphore,
                  current_player: int, player_index: int, running: bool) -> None:
-        super().__init__(daemon=True)
+        super().__init__()
 
         self.name: str = name
         self.password: str = password
