@@ -15,7 +15,7 @@ class BotPlayer(Player):
         if self._current_player == self.id:
             self._ms_logic.reset_shoot_actions(self.id)
             for tank in self._tanks:
-                self._map.catapult_check(tank, tank.get_position())
+                self._map.catapult_check(tank, tank.position)
                 self._tactic(tank)
 
         self._client.turn()
@@ -25,50 +25,50 @@ class BotPlayer(Player):
         if not coord:
             return False
 
-        self._map.get_painter().draw_shoot_animation(tank, shoot_list)
-        self._map.get_painter().draw_attacked_hp(shoot_list, tank.get_damage())
+        self._map.painter.draw_shoot_animation(tank, shoot_list)
+        self._map.painter.draw_attacked_hp(shoot_list, tank.damage)
 
         for t in shoot_list:
             self._map.shoot_update_data(tank, t)
 
-        self._client.shoot({"vehicle_id": tank.get_id(), "target": {"x": coord.q, "y": coord.r, "z": coord.s}})
+        self._client.shoot({"vehicle_id": tank.id, "target": {"x": coord.q, "y": coord.r, "z": coord.s}})
         tank.set_bonus_range(0)
 
         return True
 
     def _tactic(self, tank: Tank) -> None:
 
-        move_coord = self._ms_logic.move(tank.get_position(), tank)
+        move_coord = self._ms_logic.move(tank.position, tank)
 
-        if tank.get_type() == "light_tank":
+        if tank.type == "light_tank":
             move_coord = self.light_tank_tactic(tank)
-        elif tank.get_type() == "medium_tank":
+        elif tank.type == "medium_tank":
             move_coord = self.medium_tank_tactic(tank)
-        elif tank.get_type() == "heavy_tank":
+        elif tank.type == "heavy_tank":
             move_coord = self.heavy_tank_tactic(tank)
-        elif tank.get_type() == "spg":
+        elif tank.type == "spg":
             move_coord = self.spg_tactic(tank)
-        elif tank.get_type() == "at_spg":
+        elif tank.type == "at_spg":
             move_coord = self.tank_destroyer_tactic(tank)
 
         if not move_coord:
             return
 
-        self._map.catapult_check(tank, tank.get_position())
+        self._map.catapult_check(tank, tank.position)
         self._map.heavy_repair_check(tank, move_coord)
         self._map.light_repair_check(tank, move_coord)
 
         target = {"x": move_coord.q, "y": move_coord.r, "z": move_coord.s}
-        move_data = {"vehicle_id": tank.get_id(), "target": target}
+        move_data = {"vehicle_id": tank.id, "target": target}
 
         self._map.move_update_data(tank, Hex.dict_to_hex(target))
         self._client.move(move_data)
 
     def has_clear_path(self, tank: Tank, hex: Hex) -> bool:
-        for t in self._map.get_tanks().values():
-            if t.get_id() == tank.get_id():
+        for t in self._map.tanks.values():
+            if t.id == tank.id:
                 continue
-            if t.get_position() == hex:
+            if t.position == hex:
                 return False
         return True
 
@@ -83,29 +83,29 @@ class BotPlayer(Player):
         """
         if self._shoot(tank):
             return None
-        elif tank.optimal_hex() and tank.get_bonus_range() != 0:
+        elif tank.optimal_hex() and tank.bonus_range != 0:
             return
-        elif tank.get_position() in self._map.get_catapult().keys() and not self._shoot(tank):
-            return self._ms_logic.move(tank.get_position(), tank)
+        elif tank.position in self._map.catapult.keys() and not self._shoot(tank):
+            return self._ms_logic.move(tank.position, tank)
 
-        elif (len(tank.path) == 0 and tank.get_bonus_range() == 0) \
-                or (len(tank.path) != 0 and tank.get_position() == tank.get_spawn_position()):
-            catapult_list = sorted(self._map.get_catapult().keys(),
-                                   key=lambda hexagon: Hex.distance(tank.get_position(), hexagon))
-            tank.path = self._ms_logic.a_star(tank.get_position(), catapult_list[0])
-            if len(tank.path) >= tank.get_sp() and self.has_clear_path(tank, tank.path[2]):
+        elif (len(tank.path) == 0 and tank.bonus_range == 0) \
+                or (len(tank.path) != 0 and tank.position == tank.spawn_position):
+            catapult_list = sorted(self._map.catapult.keys(),
+                                   key=lambda hexagon: Hex.distance(tank.position, hexagon))
+            tank.path = self._ms_logic.a_star(tank.position, catapult_list[0])
+            if len(tank.path) >= tank.sp and self.has_clear_path(tank, tank.path[2]):
                 tank.path.pop(0)
                 tank.path.pop(0)
                 return tank.path.pop(0)
-        elif len(tank.path) != 0 and tank.get_bonus_range() == 0:
-            if len(tank.path) >= tank.get_sp() and self.has_clear_path(tank, tank.path[2]):
+        elif len(tank.path) != 0 and tank.bonus_range == 0:
+            if len(tank.path) >= tank.sp and self.has_clear_path(tank, tank.path[2]):
                 tank.path.pop(0)
                 tank.path.pop(0)
                 return tank.path.pop(0)
-            elif len(tank.path) >= tank.get_sp() - 1 and self.has_clear_path(tank, tank.path[1]):
+            elif len(tank.path) >= tank.sp - 1 and self.has_clear_path(tank, tank.path[1]):
                 tank.path.pop(0)
                 return tank.path.pop(0)
-            elif len(tank.path) >= tank.get_sp() - 2 and self.has_clear_path(tank, tank.path[0]):
+            elif len(tank.path) >= tank.sp - 2 and self.has_clear_path(tank, tank.path[0]):
                 return tank.path.pop(0)
 
         return None
@@ -120,27 +120,27 @@ class BotPlayer(Player):
         :param tank:
         :return:
         """
-        if tank.get_position() == tank.get_spawn_position():
+        if tank.position == tank.spawn_position:
             tank.path = []
-        if (list(self._ms_logic.can_be_shot(tank.get_player_id(), tank.get_position()).values())[0] - 1 < tank.get_hp()
-                    or self._ms_logic.is_in_base(tank.get_position())) and self._shoot(tank):
+        if (list(self._ms_logic.can_be_shot(tank.player_id, tank.position).values())[0] - 1 < tank.hp
+                    or self._ms_logic.is_in_base(tank.position)) and self._shoot(tank):
             return None
-        elif list(self._ms_logic.can_be_shot(tank.get_player_id(), tank.get_position()).values())[0] >= tank.get_hp() \
-                and not self._ms_logic.is_in_base(tank.get_position()) and len(tank.path) == 0 and tank.repair_needed():
-            light_list = sorted(self._map.get_light_repair(),
-                                key=lambda hexagon: Hex.distance(tank.get_position(), hexagon))
-            tank.path = self._ms_logic.a_star(tank.get_position(), light_list[0])
-            if len(tank.path) >= tank.get_sp() and self.has_clear_path(tank, tank.path[1]):
+        elif list(self._ms_logic.can_be_shot(tank.player_id, tank.position).values())[0] >= tank.hp \
+                and not self._ms_logic.is_in_base(tank.position) and len(tank.path) == 0 and tank.repair_needed():
+            light_list = sorted(self._map.light_repair,
+                                key=lambda hexagon: Hex.distance(tank.position, hexagon))
+            tank.path = self._ms_logic.a_star(tank.position, light_list[0])
+            if len(tank.path) >= tank.sp and self.has_clear_path(tank, tank.path[1]):
                 tank.path.pop(0)
                 return tank.path.pop(0)
         elif len(tank.path) != 0 and tank.repair_needed():
-            if len(tank.path) >= tank.get_sp() and self.has_clear_path(tank, tank.path[1]):
+            if len(tank.path) >= tank.sp and self.has_clear_path(tank, tank.path[1]):
                 tank.path.pop(0)
                 return tank.path.pop(0)
-            elif len(tank.path) == tank.get_sp() - 1 and self.has_clear_path(tank, tank.path[0]):
+            elif len(tank.path) == tank.sp - 1 and self.has_clear_path(tank, tank.path[0]):
                 return tank.path.pop(0)
         elif not tank.optimal_hex() and not self._shoot(tank):
-            return self._ms_logic.move(tank.get_position(), tank)
+            return self._ms_logic.move(tank.position, tank)
 
     def heavy_tank_tactic(self, tank: Tank) -> Optional[Hex]:
         """
@@ -152,23 +152,23 @@ class BotPlayer(Player):
         :param tank:
         :return:
         """
-        if tank.get_position() == tank.get_spawn_position():
+        if tank.position == tank.spawn_position:
             tank.path = []
-        if (list(self._ms_logic.can_be_shot(tank.get_player_id(), tank.get_position()).values())[0] - 1 < tank.get_hp()
-                    or self._ms_logic.is_in_base(tank.get_position())) and self._shoot(tank):
+        if (list(self._ms_logic.can_be_shot(tank.player_id, tank.position).values())[0] - 1 < tank.hp
+                    or self._ms_logic.is_in_base(tank.position)) and self._shoot(tank):
             return None
-        elif list(self._ms_logic.can_be_shot(tank.get_player_id(), tank.get_position()).values())[0] >= tank.get_hp() \
-                and not self._ms_logic.is_in_base(tank.get_position()) and len(tank.path) == 0 and tank.repair_needed():
-            heavy_list = sorted(self._map.get_heavy_repair(),
-                                key=lambda hexagon: Hex.distance(tank.get_position(), hexagon))
-            tank.path = self._ms_logic.a_star(tank.get_position(), heavy_list[0])
-            if len(tank.path) >= tank.get_sp() and self.has_clear_path(tank, tank.path[0]):
+        elif list(self._ms_logic.can_be_shot(tank.player_id, tank.position).values())[0] >= tank.hp \
+                and not self._ms_logic.is_in_base(tank.position) and len(tank.path) == 0 and tank.repair_needed():
+            heavy_list = sorted(self._map.heavy_repair,
+                                key=lambda hexagon: Hex.distance(tank.position, hexagon))
+            tank.path = self._ms_logic.a_star(tank.position, heavy_list[0])
+            if len(tank.path) >= tank.sp and self.has_clear_path(tank, tank.path[0]):
                 return tank.path.pop(0)
         elif len(tank.path) != 0 and tank.repair_needed():
-            if len(tank.path) >= tank.get_sp() and self.has_clear_path(tank, tank.path[0]):
+            if len(tank.path) >= tank.sp and self.has_clear_path(tank, tank.path[0]):
                 return tank.path.pop(0)
         elif not tank.optimal_hex() and not self._shoot(tank):
-            return self._ms_logic.move(tank.get_position(), tank)
+            return self._ms_logic.move(tank.position, tank)
 
     def spg_tactic(self, tank: Tank) -> Optional[Hex]:
         """
@@ -178,23 +178,23 @@ class BotPlayer(Player):
         :param tank:
         :return:
         """
-        if tank.get_position() == tank.get_spawn_position():
+        if tank.position == tank.spawn_position:
             tank.path = []
         if self._shoot(tank):
             return
         elif len(tank.path) == 0:
-            catapult_list = sorted(self._map.get_catapult().keys(),
-                                   key=lambda hexagon: Hex.distance(tank.get_position(), hexagon))
+            catapult_list = sorted(self._map.catapult.keys(),
+                                   key=lambda hexagon: Hex.distance(tank.position, hexagon))
             closest_to_center = sorted(Hex.hex_ring(catapult_list[0], 3),
                                        key=lambda hexagon: Hex.distance(Hex(0, 0, 0), hexagon))
-            for h in self._map.get_obstacles():
+            for h in self._map.obstacles:
                 if h in closest_to_center:
                     closest_to_center.remove(h)
-            tank.path = self._ms_logic.a_star(tank.get_position(), closest_to_center[1])
-            if len(tank.path) >= tank.get_sp() and self.has_clear_path(tank, tank.path[0]):
+            tank.path = self._ms_logic.a_star(tank.position, closest_to_center[1])
+            if len(tank.path) >= tank.sp and self.has_clear_path(tank, tank.path[0]):
                 return tank.path.pop(0)
         elif len(tank.path) != 0:
-            if len(tank.path) >= tank.get_sp() and self.has_clear_path(tank, tank.path[0]):
+            if len(tank.path) >= tank.sp and self.has_clear_path(tank, tank.path[0]):
                 return tank.path.pop(0)
 
         return
@@ -210,15 +210,15 @@ class BotPlayer(Player):
         """
         if self._shoot(tank):
             return
-        td_radius = Hex.hex_ring(tank.get_position(), 1)
+        td_radius = Hex.hex_ring(tank.position, 1)
         num_of_obstacles = 0
-        for h in self._map.get_obstacles():
+        for h in self._map.obstacles:
             if h in td_radius:
                 num_of_obstacles += 1
-        for t in self._map.get_tanks().values():
-            if t.get_type() == "heavy_tank" and t.get_player_id() == tank.get_player_id() and num_of_obstacles >= 2:
-                return self._ms_logic.move(tank.get_position(), tank)
+        for t in self._map.tanks.values():
+            if t.type == "heavy_tank" and t.player_id == tank.player_id and num_of_obstacles >= 2:
+                return self._ms_logic.move(tank.position, tank)
         if not tank.optimal_hex():
-            return self._ms_logic.move(tank.get_position(), tank)
+            return self._ms_logic.move(tank.position, tank)
 
         return

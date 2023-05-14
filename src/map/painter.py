@@ -19,7 +19,7 @@ class Painter:
         self.__map: dict[Hex, dict] = game_map
         self.__players: list = players
 
-        self.__tanks: dict[int, Tank] = {d["tank"].get_id(): d["tank"]
+        self.__tanks: dict[int, Tank] = {d["tank"].id: d["tank"]
                                          for d in self.__map.values() if d["tank"] is not None}
         self.__images: dict[str, Surface] = {}
         self.__load_images()
@@ -90,13 +90,13 @@ class Painter:
 
     def __draw_tanks_and_spawns(self) -> None:
         for tank in self.__tanks.values():
-            self.__color_hex(tank.get_spawn_position(), tank.spawn_color)
+            self.__color_hex(tank.spawn_position, tank.spawn_color)
             self.__draw_tank(tank)
 
     def __draw_tank(self, tank: Tank = None) -> None:
-        image = self.__images[tank.get_type()]
+        image = self.__images[tank.type]
         scaled_image = pygame.transform.scale(image, (28, 28))
-        h = tank.get_position()
+        h = tank.position
         color = pygame.Surface(scaled_image.get_size())
         color.fill(tank.tank_color)
         scaled_image.blit(color, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
@@ -110,8 +110,8 @@ class Painter:
 
     def __draw_hp(self) -> None:
         for tank in self.__tanks.values():
-            ratio_green = tank.get_hp() * 1.0 / tank.get_full_hp()
-            q, r = tank.get_position().q, tank.get_position().r
+            ratio_green = tank.hp * 1.0 / tank.full_hp
+            q, r = tank.position.q, tank.position.r
             x, y = Hex.hex_to_pixel(q, r)
             x, y = x - 9, y - 13
             line_start_g = (x, y)
@@ -140,7 +140,7 @@ class Painter:
         starting_coords = (30, 250)
         starting_coords2 = (30, 530)
         for index, player in enumerate(self.__players):
-            text = self.__font.render(f"{player.name}       {player.get_capture_points()}", True, BLACK)
+            text = self.__font.render(f"{player.name}       {player.capture_points}", True, BLACK)
             self.screen.blit(text, (starting_coords[0], starting_coords[1] + index * 30))
 
         pygame.draw.line(self.screen, BLACK, (30, 400), (250, 400), 5)
@@ -149,13 +149,13 @@ class Painter:
         self.screen.blit(text, (50, 480))
 
         for index, player in enumerate(self.__players):
-            text = self.__font.render(f"{player.name}       {player.get_destruction_points()}", True, BLACK)
+            text = self.__font.render(f"{player.name}       {player.destruction_points}", True, BLACK)
             self.screen.blit(text, (starting_coords2[0], starting_coords2[1] + index * 30))
 
     def draw_shoot_animation(self, tank: Tank, tanks: list[Tank]) -> None:
-        h1 = tank.get_position()
+        h1 = tank.position
         for t in tanks:
-            h2 = t.get_position()
+            h2 = t.position
             x1, y1 = Hex.hex_to_pixel(h1.q, h1.r)
             x2, y2 = Hex.hex_to_pixel(h2.q, h2.r)
             points = Hex.get_center(h2)
@@ -166,11 +166,11 @@ class Painter:
 
     def draw_attacked_hp(self, tanks: list[Tank], damage: int) -> None:
         for t in tanks:
-            new_hp = t.get_hp() - damage
+            new_hp = t.hp - damage
             if new_hp < 0:
                 new_hp = 0
-            ratio_green = new_hp * 1.0 / t.get_full_hp()
-            q, r = t.get_position().q, t.get_position().r
+            ratio_green = new_hp * 1.0 / t.full_hp
+            q, r = t.position.q, t.position.r
             x, y = Hex.hex_to_pixel(q, r)
             x, y = x - 9, y - 13
             line_start_g = (x, y)
