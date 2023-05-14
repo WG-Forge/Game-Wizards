@@ -115,6 +115,15 @@ class Map:
     def get_shoot_actions(self) -> dict[int, Any]:
         return self.__shoot_actions
 
+    def get_heavy_repair(self) -> list[Hex]:
+        return self.__heavy_repair
+
+    def get_light_repair(self) -> list[Hex]:
+        return self.__light_repair
+
+    def get_catapult(self) -> dict[Hex, int]:
+        return self.__catapult
+
     def move_update_data(self, tank: Tank, coord: Hex) -> None:
         self.__tank_positions[tank.get_id()] = coord
         tank.update_position(coord)

@@ -1,9 +1,25 @@
+import heapq
 import random
 from typing import Optional, Any
 
+from src.constants import optimal_hexes
 from src.map.game_map import Map
 from src.map.hex import Hex
 from src.vehicles.tank import Tank
+
+
+class PriorityQueue:
+    def __init__(self):
+        self.elements: list[tuple[float, Any]] = []
+
+    def empty(self) -> bool:
+        return not self.elements
+
+    def put(self, item: Any, priority: float) -> None:
+        heapq.heappush(self.elements, (priority, item))
+
+    def get(self) -> Any:
+        return heapq.heappop(self.elements)[1]
 
 
 # move-shoot logic
@@ -12,10 +28,10 @@ class MSLogic:
     def __init__(self, game_map: Map):
         self.__map = game_map
 
-    def move(self, start: Hex, movement: int) -> Hex:
+    def move(self, start: Hex, tank: Tank) -> Hex:
         visited = []
         rings = [[start]]
-        for k in range(1, movement + 1):
+        for k in range(1, tank.get_sp() + 1):
             rings.append([])
             for h in rings[k - 1]:
                 for direction in range(6):
@@ -31,8 +47,15 @@ class MSLogic:
 
         move_to = []
         if visited:
-            d = Hex.distance(Hex(0, 0, 0), visited[0])
+            if visited[0] == Hex(0, 0, 0):
+                d = Hex.distance(Hex(0, 0, 0), visited[1])
+            else:
+                d = Hex.distance(Hex(0, 0, 0), visited[0])
             move_to = [h for h in visited if Hex.distance(Hex(0, 0, 0), h) == d]
+            for h in move_to:
+                if h.hex_abs() == optimal_hexes[tank.get_type()] and\
+                       not self.can_be_shot(tank.get_player_id(), h).keys():
+                    return h
 
         return random.choice(move_to) if visited else None
 
@@ -71,13 +94,14 @@ class MSLogic:
         shoot_coords = [coord for coord in shoot_coords if coord not in blocked and coord in enemy_tanks]
 
         # From hex list make tank list
-        tank_shoot_coords = [self.__tank_from_hex(h) for h in shoot_coords]
+        tank_shoot_coords = [self.tank_from_hex(h) for h in shoot_coords]
 
-        # Keep tanks whose hp is > 0 and sort them based on hp
+        # Keep tanks whose hp is > 0 and sort them based on hp and cp
         tank_shoot_coords = [t for t in tank_shoot_coords if t.get_hp() > 0]
         tank_shoot_coords.sort(key=lambda tt: tt)
+        sorted(tank_shoot_coords, key=lambda tankk: tankk.get_cp(), reverse=True)  # sort by capture points
 
-        # Shoot at tank with the lowest hp
+        # Shoot at tank with the biggest cp and lowest hp
         if tank_shoot_coords:
             return tank_shoot_coords[0].get_position(), [tank_shoot_coords[0]]
         else:
@@ -128,6 +152,7 @@ class MSLogic:
         # Only keep enemies that are in shoot range whose hp is > 0 and sort them based on hp
         enemy_tanks = [t for t in enemy_tanks if t.get_position() in shoot_coords and t.get_hp() > 0]
         enemy_tanks.sort(key=lambda tt: tt)
+        sorted(enemy_tanks, key=lambda tankk: tankk.get_cp(), reverse=True)  # sort by capture points
 
         # If there are enemy tanks shoot in line where tank with the lowest hp is
         if enemy_tanks:
@@ -147,7 +172,7 @@ class MSLogic:
             if new_hex in shoot_coords:
                 for t in enemy_tanks:
                     if new_hex == t.get_position():
-                        tanks_shot_at.append(self.__tank_from_hex(new_hex))
+                        tanks_shot_at.append(self.tank_from_hex(new_hex))
 
         return Hex(x - dx, y - dy, z - dz), tanks_shot_at
 
@@ -193,9 +218,68 @@ class MSLogic:
             return False
         return True
 
-    def __tank_from_hex(self, h: Hex) -> Tank:
+    def tank_from_hex(self, h: Hex) -> Tank:
         return self.__map.get_tanks()[self.__get_key_from_value(self.__map.get_tank_positions(), h)[0]]
 
     @staticmethod
     def __get_key_from_value(d: dict, value: Any) -> list[Any]:
         return [k for k, v in d.items() if v == value]
+
+    def a_star(self, start: Hex, finish: Hex):
+        frontier = PriorityQueue()
+        frontier.put(start, 0)
+        came_from: dict[Hex, [Hex]] = {}
+        cost_so_far: dict[Hex, float] = {start: 0}
+        came_from[start] = None
+
+        while not frontier.empty():
+            current: Hex = frontier.get()
+            if current == finish:
+                break
+
+            for next_coord in self.__hexNeighbors(current):
+                new_cost = cost_so_far[current] + 1
+                if next_coord not in cost_so_far or new_cost < cost_so_far[next_coord]:
+                    cost_so_far[next_coord] = new_cost
+                    priority = new_cost + Hex.distance(next_coord, finish)
+                    frontier.put(next_coord, priority)
+                    came_from[next_coord] = current
+
+        path = []
+        current = finish
+        while current != start:
+            path.append(current)
+            if current not in came_from:
+                return None
+            current = came_from[current]
+        path.append(start)
+        path.reverse()
+        path.pop(0)  # remove hex we stand on
+
+        return path
+
+    def __hexNeighbors(self, h: Hex) -> [Hex]:
+        neighbors = []
+        for direction in range(6):
+            new_neighbor = Hex.hex_neighbor(h, direction)
+            if not self.__offTheGridDetection(new_neighbor) and not (new_neighbor in self.__map.get_obstacles()):
+                neighbors.append(new_neighbor)
+        return neighbors
+
+    def can_be_shot(self, player_id: int, hex: Hex) -> dict[bool, int]:
+        times = 0
+        for t in self.__map.get_tanks().values():
+            if player_id == t.get_player_id():
+                # if tanks belong to the same player - skip
+                continue
+            # assume that if we go into the range, enemy tank will automatically shoot us
+            if t.get_max_range() < Hex.distance(t.get_position(), hex) or\
+                    Hex.distance(t.get_position(), hex) < t.get_min_range():
+                # if this t cannot shoot our tank - skip
+                continue
+            else:
+                times += 1
+        if times != 0:
+            return {True: times}
+        else:
+            return {False: times}

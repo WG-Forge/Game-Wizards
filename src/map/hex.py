@@ -47,6 +47,9 @@ class Hex:
     def __mul__(self, other: int) -> Hex:
         return Hex(self.q * other, self.r * other, self.s * other)
 
+    def hex_abs(self) -> int:
+        return abs(self.q) + abs(self.r) + abs(self.s)
+
     @staticmethod
     def dict_to_hex(data: dict) -> Hex:
         return Hex(data['x'], data['y'], data['z'])

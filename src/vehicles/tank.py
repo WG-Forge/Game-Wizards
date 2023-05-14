@@ -1,5 +1,5 @@
 from src.map.hex import Hex
-from src.constants import tank_characteristics
+from src.constants import tank_characteristics, optimal_hexes
 
 
 class Tank:
@@ -24,6 +24,7 @@ class Tank:
 
         self.tank_color: tuple = tank_color
         self.spawn_color: tuple = spawn_color
+        self.path: list = []
 
     def __str__(self) -> str:
         return f"{self.__tank_id}: {self.__position}"
@@ -88,9 +89,23 @@ class Tank:
     def set_bonus_range(self, bonus_range: int) -> None:
         self.__bonus_range = bonus_range
 
+    def get_bonus_range(self) -> int:
+        return self.__bonus_range
+
     def repair(self) -> None:
         self.__hp = self.__full_hp
 
     def reset(self) -> None:
         self.__hp = self.__full_hp
         self.__position = self.__spawn_position
+
+    # Is this tank at his optimal hex?
+    def optimal_hex(self) -> bool:
+        if self.get_position().hex_abs() == optimal_hexes[self.get_type()]:
+            return True
+        return False
+
+    def repair_needed(self) -> bool:
+        if self.get_hp() != self.get_full_hp():
+            return True
+        return False
