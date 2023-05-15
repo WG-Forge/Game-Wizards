@@ -85,7 +85,7 @@ class BotPlayer(Player):
             return None
         elif tank.optimal_hex() and tank.bonus_range != 0:
             return
-        elif tank.position in self._map.catapult.keys() and not self._shoot(tank):
+        elif not tank.optimal_hex() and tank.bonus_range != 0:
             return self._ms_logic.move(tank.position, tank)
 
         elif (len(tank.path) == 0 and tank.bonus_range == 0) \
