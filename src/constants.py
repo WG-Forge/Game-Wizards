@@ -101,7 +101,7 @@ LEGEND_TEXT_POSITION = [(1005, 56), (1005, 93), (1005, 130), (1005, 167),
 LEGEND_NAME = ["spg", "light_tank", "heavy_tank", "medium_tank", "at_spg", "catapult", "heavy_repair", "light_repair"]
 
 # abs values of optimal hex coordinates for each tank
-optimal_hexes = {
+OPTIMAL_HEXES = {
     "spg": 6,
     "light_tank": 6,
     "heavy_tank": 2,

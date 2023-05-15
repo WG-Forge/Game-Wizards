@@ -2,7 +2,7 @@ import heapq
 import random
 from typing import Optional, Any
 
-from src.constants import optimal_hexes
+from src.constants import OPTIMAL_HEXES
 from src.map.game_map import Map
 from src.map.hex import Hex
 from src.vehicles.tank import Tank
@@ -37,7 +37,7 @@ class MSLogic:
                 for direction in range(6):
                     neighbor = Hex.hex_neighbor(h, direction)
                     if neighbor not in visited and neighbor not in self.__map.obstacles \
-                            and not self.__offTheGridDetection(neighbor):
+                            and not self.__off_the_grid_detection(neighbor):
                         visited.append(neighbor)
                         rings[k].append(neighbor)
 
@@ -46,14 +46,12 @@ class MSLogic:
         visited.sort(key=lambda x: x)
 
         move_to = []
+        center = Hex(0, 0, 0)
         if visited:
-            if visited[0] == Hex(0, 0, 0):
-                d = Hex.distance(Hex(0, 0, 0), visited[1])
-            else:
-                d = Hex.distance(Hex(0, 0, 0), visited[0])
-            move_to = [h for h in visited if Hex.distance(Hex(0, 0, 0), h) == d]
+            d = Hex.distance(center, visited[1]) if visited[0].is_center() else Hex.distance(center, visited[0])
+            move_to = [h for h in visited if Hex.distance(center, h) == d]
             for h in move_to:
-                if abs(h) == optimal_hexes[tank.type] and\
+                if abs(h) == OPTIMAL_HEXES[tank.type] and\
                        not self.can_be_shot(tank.player_id, h).keys():
                     return h
 
@@ -189,7 +187,7 @@ class MSLogic:
         # get positional coord based on current tank position and remove those that are not in map
         x, y, z = tank.position
         positional_shoot_coords = [Hex(x + dx, y + dy, z + dz) for (dx, dy, dz) in general_shoot_coords
-                                   if not self.__offTheGridDetection(Hex(x + dx, y + dy, z + dz))]
+                                   if not self.__off_the_grid_detection(Hex(x + dx, y + dy, z + dz))]
 
         return positional_shoot_coords
 
@@ -213,7 +211,7 @@ class MSLogic:
         return tank_pos in self.__map.base
 
     # Detects if the given coordinates are off the grid
-    def __offTheGridDetection(self, h: Hex) -> bool:
+    def __off_the_grid_detection(self, h: Hex) -> bool:
         if h in self.__map.map.keys():
             return False
         return True
@@ -237,7 +235,7 @@ class MSLogic:
             if current == finish:
                 break
 
-            for next_coord in self.__hexNeighbors(current):
+            for next_coord in self.__hex_neighbors(current):
                 new_cost = cost_so_far[current] + 1
                 if next_coord not in cost_so_far or new_cost < cost_so_far[next_coord]:
                     cost_so_far[next_coord] = new_cost
@@ -258,11 +256,11 @@ class MSLogic:
 
         return path
 
-    def __hexNeighbors(self, h: Hex) -> [Hex]:
+    def __hex_neighbors(self, h: Hex) -> [Hex]:
         neighbors = []
         for direction in range(6):
             new_neighbor = Hex.hex_neighbor(h, direction)
-            if not self.__offTheGridDetection(new_neighbor) and not (new_neighbor in self.__map.obstacles):
+            if not self.__off_the_grid_detection(new_neighbor) and not (new_neighbor in self.__map.obstacles):
                 neighbors.append(new_neighbor)
         return neighbors
 

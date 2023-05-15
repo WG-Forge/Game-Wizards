@@ -1,5 +1,5 @@
 from src.map.hex import Hex
-from src.constants import tank_characteristics, optimal_hexes
+from src.constants import tank_characteristics, OPTIMAL_HEXES
 
 
 class Tank:
@@ -115,7 +115,7 @@ class Tank:
 
     # Is this tank at his optimal hex?
     def optimal_hex(self) -> bool:
-        if abs(self.position) == optimal_hexes[self.type]:
+        if abs(self.position) == OPTIMAL_HEXES[self.type]:
             return True
         return False
 
