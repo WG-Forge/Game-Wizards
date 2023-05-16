@@ -1,8 +1,10 @@
 from typing import Any, Optional
+from pygame import Surface
 
 from src.map.hex import Hex
-from src.map.painter import Painter
+from src.gui.painter import Painter
 from src.vehicles.tank import Tank
+from src.gui.explosion import Explosion
 
 
 class Map:
@@ -74,9 +76,9 @@ class Map:
             server_cp = tank_info["capture_points"]
 
             tank = self.__tanks[tank_id]
-            tank_position = tank.get_position()
-            tank_hp = tank.get_hp()
-            tank_cp = tank.get_cp()
+            tank_position = tank.position
+            tank_hp = tank.hp
+            tank_cp = tank.cp
 
             if server_position != tank_position:
                 self.move_update_data(tank, server_position)
@@ -85,60 +87,82 @@ class Map:
             if server_cp != tank_cp:
                 tank.update_cp(server_cp)
 
-    def draw_map(self, current_turn: int, num_turns: int, current_round: int, num_rounds: int) -> None:
-        self.__painter.draw(current_turn, num_turns, current_round, num_rounds)
+    def draw_map(self, screen: Surface, current_turn: int, num_turns: int, current_round: int, num_rounds: int) -> None:
+        self.__painter.draw(screen, current_turn, num_turns, current_round, num_rounds)
 
-    def get_painter(self) -> Painter:
+    @property
+    def painter(self) -> Painter:
         return self.__painter
 
-    def get_map(self) -> dict[Hex, dict]:
+    @property
+    def map(self) -> dict[Hex, dict]:
         return self.__map
 
-    def get_tank_positions(self) -> dict[int, Hex]:
+    @property
+    def tank_positions(self) -> dict[int, Hex]:
         return self.__tank_positions
 
-    def get_tanks(self) -> dict[int, Tank]:
+    @property
+    def tanks(self) -> dict[int, Tank]:
         return self.__tanks
 
-    def get_base(self) -> list[Hex]:
+    @property
+    def base(self) -> list[Hex]:
         return self.__base
 
-    def get_obstacles(self) -> list[Hex]:
+    @property
+    def obstacles(self) -> list[Hex]:
         return self.__obstacles
 
-    def get_spawn(self) -> list[Hex]:
+    @property
+    def spawn(self) -> list[Hex]:
         return self.__spawn
 
-    def get_players(self) -> list:
+    @property
+    def players(self) -> list:
         return self.__players
 
-    def get_shoot_actions(self) -> dict[int, Any]:
+    @property
+    def shoot_actions(self) -> dict[int, Any]:
         return self.__shoot_actions
 
+    @property
+    def heavy_repair(self) -> list[Hex]:
+        return self.__heavy_repair
+
+    @property
+    def light_repair(self) -> list[Hex]:
+        return self.__light_repair
+
+    @property
+    def catapult(self) -> dict[Hex, int]:
+        return self.__catapult
+
     def move_update_data(self, tank: Tank, coord: Hex) -> None:
-        self.__tank_positions[tank.get_id()] = coord
+        self.__tank_positions[tank.id] = coord
         tank.update_position(coord)
 
     def shoot_update_data(self, tank: Tank, tank2: Tank) -> None:
-        if tank2.get_hp() - tank.get_damage() <= 0:
-            tank.update_dp(tank.get_dp() + tank2.get_full_hp())
+        if tank2.hp - tank.damage <= 0:
+            self.painter.explosion_group.add(Explosion(Hex.hex_to_pixel(tank2.position.q, tank2.position.r)))
+            tank.update_dp(tank.dp + tank2.full_hp)
             tank2.reset()
         else:
-            tank2.update_hp(tank2.get_hp() - tank.get_damage())
+            tank2.update_hp(tank2.hp - tank.damage)
 
-        self.__shoot_actions[tank.get_player_id()].append(tank2.get_player_id())
+        self.__shoot_actions[tank.player_id].append(tank2.player_id)
 
     def catapult_check(self, tank: Tank, move_coord: Hex) -> None:
         if move_coord in self.__catapult.keys() and self.__catapult[move_coord] > 0:
-            tank.set_bonus_range(1)
+            tank.update_bonus_range()
             self.__catapult[move_coord] -= 1
 
     def heavy_repair_check(self, tank: Tank, move_coord: Hex) -> None:
-        tank_type = tank.get_type()
+        tank_type = tank.type
         if (tank_type == "heavy_tank" or tank_type == "at_spg") and move_coord in self.__heavy_repair:
             tank.repair()
 
     def light_repair_check(self, tank: Tank, move_coord: Hex) -> None:
-        tank_type = tank.get_type()
+        tank_type = tank.type
         if tank_type == "medium_tank" and move_coord in self.__light_repair:
             tank.repair()

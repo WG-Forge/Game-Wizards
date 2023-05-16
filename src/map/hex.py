@@ -31,9 +31,7 @@ class Hex:
         return self.q == other.q and self.r == other.r and self.s == other.s
 
     def __lt__(self, other: Hex) -> bool:
-        sum_1 = abs(self.q) + abs(self.r) + abs(self.s)
-        sum_2 = abs(other.q) + abs(other.r) + abs(other.s)
-        return sum_1 < sum_2
+        return abs(self) < abs(other)
 
     def __iter__(self):
         return iter((self.q, self.r, self.s))
@@ -46,6 +44,12 @@ class Hex:
 
     def __mul__(self, other: int) -> Hex:
         return Hex(self.q * other, self.r * other, self.s * other)
+
+    def __abs__(self) -> int:
+        return abs(self.q) + abs(self.r) + abs(self.s)
+
+    def is_center(self) -> bool:
+        return self.q == 0 and self.r == 0 and self.s == 0
 
     @staticmethod
     def dict_to_hex(data: dict) -> Hex:

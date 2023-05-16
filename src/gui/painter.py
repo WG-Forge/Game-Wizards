@@ -1,6 +1,8 @@
 import pygame
 from pygame import Surface
 from pygame.font import Font
+from pygame.sprite import Group
+from typing import Optional
 
 from src.map.hex import Hex
 from src.vehicles.tank import Tank
@@ -10,10 +12,7 @@ from src.constants import SCREEN_WIDTH, SCREEN_HEIGHT, BLACK, WHITE, BASE_COLOR,
 
 class Painter:
     def __init__(self, game_map: dict, players: list):
-        pygame.init()
-        pygame.display.set_caption("Game Wizards")
-        pygame.display.set_icon(pygame.image.load("src/assets/screen/icon.png"))
-        self.screen: Surface = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.screen: Optional[Surface] = None
         self.__font_size: int = 21
         self.__font: Font = pygame.font.Font("src/assets/screen/BF_Modernista-Regular.ttf", self.__font_size)
         self.__map: dict[Hex, dict] = game_map
@@ -22,6 +21,7 @@ class Painter:
         self.__tanks: dict[int, Tank] = {d["tank"].id: d["tank"]
                                          for d in self.__map.values() if d["tank"] is not None}
         self.__images: dict[str, Surface] = {}
+        self.explosion_group: Group = Group()
         self.__load_images()
 
     def __load_images(self) -> None:
@@ -40,7 +40,8 @@ class Painter:
     def __load_image(img_path: str) -> Surface:
         return pygame.image.load(img_path).convert_alpha()
 
-    def draw(self, current_turn: int, num_turns: int, current_round: int, num_rounds: int) -> None:
+    def draw(self, screen: Surface, current_turn: int, num_turns: int, current_round: int, num_rounds: int) -> None:
+        self.screen = screen
         self.__draw_map()
         self.__draw_turn_and_round(current_turn, num_turns, current_round, num_rounds)
         self.__draw_scoreboard()
@@ -61,6 +62,12 @@ class Painter:
         self.__draw_hp()
 
         self.__draw_legend()
+
+        while self.explosion_group:
+            self.explosion_group.update()
+            for sprite in self.explosion_group.sprites():
+                self.screen.blit(sprite.image, sprite.rect)
+                pygame.display.update(sprite.rect)
 
         pygame.display.flip()
 
@@ -97,6 +104,7 @@ class Painter:
         image = self.__images[tank.type]
         scaled_image = pygame.transform.scale(image, (28, 28))
         h = tank.position
+        # print(h)
         color = pygame.Surface(scaled_image.get_size())
         color.fill(tank.tank_color)
         scaled_image.blit(color, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
@@ -161,26 +169,5 @@ class Painter:
             points = Hex.get_center(h2)
             pygame.draw.polygon(self.screen, RED, points, 3)
             pygame.draw.line(self.screen, RED, (x1, y1), (x2, y2), 5)
-
-        pygame.display.flip()
-
-    def draw_attacked_hp(self, tanks: list[Tank], damage: int) -> None:
-        for t in tanks:
-            new_hp = t.hp - damage
-            if new_hp < 0:
-                new_hp = 0
-            ratio_green = new_hp * 1.0 / t.full_hp
-            q, r = t.position.q, t.position.r
-            x, y = Hex.hex_to_pixel(q, r)
-            x, y = x - 9, y - 13
-            line_start_g = (x, y)
-            line_end_g = (x + 18 * ratio_green, y)
-            line_start_r = (x + 18 * ratio_green + 1, y)
-            line_end_r = (x + 18, y)
-            if ratio_green != 0:
-                pygame.draw.line(self.screen, HP_COLOR, line_start_g, line_end_g, 4)
-            elif ratio_green == 0:
-                line_start_r = line_start_g
-            pygame.draw.line(self.screen, RED, line_start_r, line_end_r, 4)
 
         pygame.display.flip()
