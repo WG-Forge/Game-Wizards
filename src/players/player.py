@@ -22,6 +22,7 @@ class Player(Thread, ABC):
         self._tanks: list[Tank] = []
         self.__capture_points: int = 0
         self.__destroyed_points: int = 0
+        self.__win_points: int = 0
 
         self._client: Optional[ServerConnection] = None
         self._map: Optional[Map] = None
@@ -52,8 +53,15 @@ class Player(Thread, ABC):
         return self.__destroyed_points
 
     @property
+    def win_points(self) -> int:
+        return self.__win_points
+
+    @property
     def ms_logic(self) -> MSLogic:
         return self._ms_logic
+
+    def set_win_points(self, win_points: int) -> None:
+        self.__win_points = win_points
 
     def add(self, player_info: dict, client: ServerConnection) -> None:
         self.id = player_info["idx"]

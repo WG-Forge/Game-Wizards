@@ -269,9 +269,6 @@ class Menu:
         self.game_setup.pack(self.player_name_label, align=ALIGN_CENTER, margin=PACKING_MARGIN)
         self.game_setup.pack(self.player_name_input, align=ALIGN_CENTER, margin=PACKING_MARGIN)
         self.game_setup.pack(self.player_add_button, align=ALIGN_CENTER, margin=PACKING_MARGIN)
-        # self.game_setup.pack(self.observer_name_label, align=ALIGN_CENTER, margin=PACKING_MARGIN)
-        # self.game_setup.pack(self.observer_name_input, align=ALIGN_CENTER, margin=PACKING_MARGIN)
-        # self.game_setup.pack(self.observer_add_button, align=ALIGN_CENTER, margin=PACKING_MARGIN)
         self.game_setup.pack(self.start_back_frame, align=ALIGN_CENTER,
                              vertical_position=POSITION_SOUTH)
 

@@ -181,6 +181,10 @@ class Game(Thread):
 
         # Check if round/game is over
         if game_state["finished"]:
+            win_points: dict = game_state["player_result_points"]
+            for player_id in win_points.keys():
+                self.__players_in_game[int(player_id)].set_win_points(win_points[player_id])
+
             self.__winner = game_state["winner"]
             if self.__winner:
                 self.__player_wins[self.__winner] += 1

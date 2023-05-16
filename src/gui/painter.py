@@ -145,22 +145,28 @@ class Painter:
     def __draw_scoreboard(self) -> None:
 
         text = self.__font.render("CAPTURE POINTS", True, BLACK)
-        self.screen.blit(text, (50, 200))
+        self.screen.blit(text, (50, 80))
 
-        starting_coords = (30, 250)
-        starting_coords2 = (30, 530)
+        starting_coords = (30, 130)
+        starting_coords2 = (30, 340)
+        starting_coords3 = (30, 550)
         for index, player in enumerate(self.__players):
             text = self.__font.render(f"{player.name}       {player.capture_points}", True, BLACK)
             self.screen.blit(text, (starting_coords[0], starting_coords[1] + index * 30))
 
-        pygame.draw.line(self.screen, BLACK, (30, 400), (250, 400), 5)
-
         text = self.__font.render("DESTRUCTION POINTS", True, BLACK)
-        self.screen.blit(text, (50, 480))
+        self.screen.blit(text, (50, 290))
 
         for index, player in enumerate(self.__players):
             text = self.__font.render(f"{player.name}       {player.destruction_points}", True, BLACK)
             self.screen.blit(text, (starting_coords2[0], starting_coords2[1] + index * 30))
+
+        text = self.__font.render("WIN POINTS", True, BLACK)
+        self.screen.blit(text, (50, 500))
+
+        for index, player in enumerate(self.__players):
+            text = self.__font.render(f"{player.name}       {player.win_points}", True, BLACK)
+            self.screen.blit(text, (starting_coords3[0], starting_coords3[1] + index * 30))
 
     def add_shoot_animation(self, h1: Hex, h2: Hex) -> None:
         self.__shoot_animations.put((h1, h2))
