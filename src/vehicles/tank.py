@@ -19,12 +19,13 @@ class Tank:
 
         self.__capture_points: int = tank_data["capture_points"]
         self.__destruction_points: int = 0
+
         self.__spawn_position: Hex = Hex.dict_to_hex(tank_data["spawn_position"])
         self.__position: Hex = self.__spawn_position
+        self.path: list = []
 
         self.tank_color: tuple = tank_color
         self.spawn_color: tuple = spawn_color
-        self.path: list = []
 
     def __str__(self) -> str:
         return f"{self.__tank_id}: {self.__position}"
@@ -103,8 +104,11 @@ class Tank:
     def update_dp(self, new_dp: int) -> None:
         self.__destruction_points = new_dp
 
-    def set_bonus_range(self, bonus_range: int) -> None:
-        self.__bonus_range = bonus_range
+    def update_bonus_range(self) -> None:
+        self.__bonus_range = 1
+
+    def reset_bonus_range(self) -> None:
+        self.__bonus_range = 0
 
     def repair(self) -> None:
         self.__hp = self.__full_hp

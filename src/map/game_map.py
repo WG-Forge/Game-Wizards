@@ -1,8 +1,10 @@
 from typing import Any, Optional
+from pygame import Surface
 
 from src.map.hex import Hex
-from src.map.painter import Painter
+from src.gui.painter import Painter
 from src.vehicles.tank import Tank
+from src.gui.explosion import Explosion
 
 
 class Map:
@@ -85,8 +87,8 @@ class Map:
             if server_cp != tank_cp:
                 tank.update_cp(server_cp)
 
-    def draw_map(self, current_turn: int, num_turns: int, current_round: int, num_rounds: int) -> None:
-        self.__painter.draw(current_turn, num_turns, current_round, num_rounds)
+    def draw_map(self, screen: Surface, current_turn: int, num_turns: int, current_round: int, num_rounds: int) -> None:
+        self.__painter.draw(screen, current_turn, num_turns, current_round, num_rounds)
 
     @property
     def painter(self) -> Painter:
@@ -142,6 +144,7 @@ class Map:
 
     def shoot_update_data(self, tank: Tank, tank2: Tank) -> None:
         if tank2.hp - tank.damage <= 0:
+            self.painter.explosion_group.add(Explosion(Hex.hex_to_pixel(tank2.position.q, tank2.position.r)))
             tank.update_dp(tank.dp + tank2.full_hp)
             tank2.reset()
         else:
@@ -151,7 +154,7 @@ class Map:
 
     def catapult_check(self, tank: Tank, move_coord: Hex) -> None:
         if move_coord in self.__catapult.keys() and self.__catapult[move_coord] > 0:
-            tank.set_bonus_range(1)
+            tank.update_bonus_range()
             self.__catapult[move_coord] -= 1
 
     def heavy_repair_check(self, tank: Tank, move_coord: Hex) -> None:

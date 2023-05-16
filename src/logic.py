@@ -37,7 +37,7 @@ class MSLogic:
                 for direction in range(6):
                     neighbor = Hex.hex_neighbor(h, direction)
                     if neighbor not in visited and neighbor not in self.__map.obstacles \
-                            and not self.__off_the_grid_detection(neighbor):
+                            and not self.__off_the_grid(neighbor):
                         visited.append(neighbor)
                         rings[k].append(neighbor)
 
@@ -92,7 +92,7 @@ class MSLogic:
         shoot_coords = [coord for coord in shoot_coords if coord not in blocked and coord in enemy_tanks]
 
         # From hex list make tank list
-        tank_shoot_coords = [self.__tank_from_hex(h) for h in shoot_coords]
+        tank_shoot_coords = [self.tank_from_hex(h) for h in shoot_coords]
 
         # Keep tanks whose hp is > 0 and sort them based on hp and cp
         tank_shoot_coords = [t for t in tank_shoot_coords if t.hp > 0]
@@ -127,7 +127,7 @@ class MSLogic:
             coord = t.position
             if t.player_id == tank.player_id and Hex.distance(coord, tank.position) > 1:
                 blocked.append(coord)
-            elif self.__neutrality_check(tank, t):
+            elif t.player_id != tank.player_id and self.__neutrality_check(tank, t):
                 if Hex.distance(coord, tank.position) == 1:
                     blocked.append(coord)
                     (dx, dy, dz) = ((x - coord.q), (y - coord.r), (z - coord.s))
@@ -170,7 +170,7 @@ class MSLogic:
             if new_hex in shoot_coords:
                 for t in enemy_tanks:
                     if new_hex == t.position:
-                        tanks_shot_at.append(self.__tank_from_hex(new_hex))
+                        tanks_shot_at.append(self.tank_from_hex(new_hex))
 
         return Hex(x - dx, y - dy, z - dz), tanks_shot_at
 
@@ -187,22 +187,26 @@ class MSLogic:
         # get positional coord based on current tank position and remove those that are not in map
         x, y, z = tank.position
         positional_shoot_coords = [Hex(x + dx, y + dy, z + dz) for (dx, dy, dz) in general_shoot_coords
-                                   if not self.__off_the_grid_detection(Hex(x + dx, y + dy, z + dz))]
+                                   if not self.__off_the_grid(Hex(x + dx, y + dy, z + dz))]
 
         return positional_shoot_coords
 
     def __neutrality_check(self, tank_1: Tank, tank_2: Tank) -> bool:
         id1, id2 = tank_1.player_id, tank_2.player_id
         id3 = self.__third_player(id1, id2)
+        if not id3:
+            return False
         if id1 in self.__map.shoot_actions[id2] or id2 not in self.__map.shoot_actions[id3]:
             return False
         else:
             return True
 
-    def __third_player(self, id1: int, id2: int) -> int:
+    def __third_player(self, id1: int, id2: int) -> Optional[int]:
         for p in self.__map.players:
             if p.id != id1 and p.id != id2:
                 return p.id
+
+        return None
 
     def reset_shoot_actions(self, player_id: int) -> None:
         self.__map.shoot_actions[player_id] = []
@@ -211,12 +215,43 @@ class MSLogic:
         return tank_pos in self.__map.base
 
     # Detects if the given coordinates are off the grid
-    def __off_the_grid_detection(self, h: Hex) -> bool:
+    def __off_the_grid(self, h: Hex) -> bool:
         if h in self.__map.map.keys():
             return False
         return True
 
-    def __tank_from_hex(self, h: Hex) -> Tank:
+    def at_spg_shoot_update(self, tank: Tank, target: Hex) -> None:
+        x, y, z = tank.position
+        (dx, dy, dz) = ((x - target.q), (y - target.r), (z - target.s))
+        line: list[Hex] = []
+        for i in range(tank.max_range):
+            line.append(Hex(target.q - (i + 1) * dx, target.r - (i + 1) * dy, target.s - (i + 1) * dz))
+
+        line = [h for h in line if not self.__off_the_grid(h)]
+        blocked = []
+
+        for coord in line:
+            if coord in self.__map.obstacles:
+                blocked.append(coord)
+                d = Hex.distance(tank.position, coord)
+                (dx, dy, dz) = ((x - coord.q) / d, (y - coord.r) / d, (z - coord.s) / d)
+                for i in range(tank.max_range - d):
+                    blocked.append(Hex(coord.q - (i + 1) * dx, coord.r - (i + 1) * dy, coord.s - (i + 1) * dz))
+
+        line = [h for h in line if h not in blocked]
+
+        enemy_tanks = []
+
+        for t in self.__map.tanks.values():
+            if t.player_id != tank.player_id and not self.__neutrality_check(tank, t):
+                enemy_tanks.append(t)
+
+        enemy_tanks = [t for t in enemy_tanks if t.position in line and t.hp > 0]
+
+        for t in enemy_tanks:
+            self.__map.shoot_update_data(tank, t)
+
+    def tank_from_hex(self, h: Hex) -> Tank:
         return self.__map.tanks[self.__get_key_from_value(self.__map.tank_positions, h)[0]]
 
     @staticmethod
@@ -260,19 +295,19 @@ class MSLogic:
         neighbors = []
         for direction in range(6):
             new_neighbor = Hex.hex_neighbor(h, direction)
-            if not self.__off_the_grid_detection(new_neighbor) and not (new_neighbor in self.__map.obstacles):
+            if not self.__off_the_grid(new_neighbor) and not (new_neighbor in self.__map.obstacles):
                 neighbors.append(new_neighbor)
         return neighbors
 
-    def can_be_shot(self, player_id: int, hex: Hex) -> dict[bool, int]:
+    def can_be_shot(self, player_id: int, h: Hex) -> dict[bool, int]:
         times = 0
         for t in self.__map.tanks.values():
             if player_id == t.player_id:
                 # if tanks belong to the same player - skip
                 continue
             # assume that if we go into the range, enemy tank will automatically shoot us
-            if t.max_range < Hex.distance(t.position, hex) or\
-                    Hex.distance(t.position, hex) < t.min_range:
+            if t.max_range < Hex.distance(t.position, h) or\
+                    Hex.distance(t.position, h) < t.min_range:
                 # if this t cannot shoot our tank - skip
                 continue
             else:
