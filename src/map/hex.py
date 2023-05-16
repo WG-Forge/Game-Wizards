@@ -47,6 +47,12 @@ class Hex:
     def __mul__(self, other: int) -> Hex:
         return Hex(self.q * other, self.r * other, self.s * other)
 
+    def __abs__(self) -> int:
+        return abs(self.q) + abs(self.r) + abs(self.s)
+
+    def is_center(self):
+        return self.q == 0 and self.r == 0 and self.s == 0
+
     @staticmethod
     def dict_to_hex(data: dict) -> Hex:
         return Hex(data['x'], data['y'], data['z'])

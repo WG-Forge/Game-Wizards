@@ -1,5 +1,5 @@
 from src.map.hex import Hex
-from src.constants import tank_characteristics
+from src.constants import tank_characteristics, OPTIMAL_HEXES
 
 
 class Tank:
@@ -24,6 +24,7 @@ class Tank:
 
         self.tank_color: tuple = tank_color
         self.spawn_color: tuple = spawn_color
+        self.path: list = []
 
     def __str__(self) -> str:
         return f"{self.__tank_id}: {self.__position}"
@@ -34,44 +35,61 @@ class Tank:
     def __lt__(self, other) -> bool:
         return self.__hp < other.__hp
 
-    def get_player_id(self) -> int:
+    @property
+    def player_id(self) -> int:
         return self.__player_id
 
-    def get_sp(self) -> int:
+    @property
+    def sp(self) -> int:
         return self.__sp
 
-    def get_position(self) -> Hex:
+    @property
+    def position(self) -> Hex:
         return self.__position
 
-    def get_spawn_position(self) -> Hex:
+    @property
+    def spawn_position(self) -> Hex:
         return self.__spawn_position
 
-    def get_hp(self) -> int:
+    @property
+    def hp(self) -> int:
         return self.__hp
 
-    def get_full_hp(self) -> int:
+    @property
+    def full_hp(self) -> int:
         return self.__full_hp
 
-    def get_cp(self) -> int:
+    @property
+    def cp(self) -> int:
         return self.__capture_points
 
-    def get_id(self) -> int:
+    @property
+    def id(self) -> int:
         return self.__tank_id
 
-    def get_type(self) -> str:
+    @property
+    def type(self) -> str:
         return self.__tank_type
 
-    def get_min_range(self) -> int:
+    @property
+    def min_range(self) -> int:
         return self.__min_range
 
-    def get_max_range(self) -> int:
+    @property
+    def max_range(self) -> int:
         return self.__max_range + self.__bonus_range
 
-    def get_damage(self) -> int:
+    @property
+    def damage(self) -> int:
         return self.__damage
 
-    def get_dp(self) -> int:
+    @property
+    def dp(self) -> int:
         return self.__destruction_points
+
+    @property
+    def bonus_range(self) -> int:
+        return self.__bonus_range
 
     def update_position(self, new_position: Hex) -> None:
         self.__position = new_position
@@ -94,3 +112,14 @@ class Tank:
     def reset(self) -> None:
         self.__hp = self.__full_hp
         self.__position = self.__spawn_position
+
+    # Is this tank at his optimal hex?
+    def optimal_hex(self) -> bool:
+        if abs(self.position) == OPTIMAL_HEXES[self.type]:
+            return True
+        return False
+
+    def repair_needed(self) -> bool:
+        if self.hp != self.full_hp:
+            return True
+        return False

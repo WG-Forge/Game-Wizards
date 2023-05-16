@@ -41,12 +41,14 @@ class Player(Thread, ABC):
     def __repr__(self) -> str:
         return f"Player {self.id}: {self.name}"
 
-    def get_capture_points(self) -> int:
-        self.__capture_points = sum(tank.get_cp() for tank in self._tanks)
+    @property
+    def capture_points(self) -> int:
+        self.__capture_points = sum(tank.cp for tank in self._tanks)
         return self.__capture_points
 
-    def get_destruction_points(self) -> int:
-        self.__destroyed_points = sum(tank.get_dp() for tank in self._tanks)
+    @property
+    def destruction_points(self) -> int:
+        self.__destroyed_points = sum(tank.dp for tank in self._tanks)
         return self.__destroyed_points
 
     def add(self, player_info: dict, client: Client) -> None:
