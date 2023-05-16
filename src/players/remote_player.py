@@ -15,7 +15,6 @@ class RemotePlayer(Player):
             self._client.turn()
             # Last turn actions
             remote_actions: list[dict] = self._client.game_actions()["actions"]
-            print(remote_actions)
 
             for action in remote_actions:
                 action_type: int = action["action_type"]

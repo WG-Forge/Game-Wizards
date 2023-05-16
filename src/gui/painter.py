@@ -3,6 +3,7 @@ from pygame import Surface
 from pygame.font import Font
 from pygame.sprite import Group
 from typing import Optional
+import queue
 
 from src.map.hex import Hex
 from src.vehicles.tank import Tank
@@ -22,6 +23,8 @@ class Painter:
                                          for d in self.__map.values() if d["tank"] is not None}
         self.__images: dict[str, Surface] = {}
         self.explosion_group: Group = Group()
+        self.__shoot_animations: queue = queue.Queue()
+
         self.__load_images()
 
     def __load_images(self) -> None:
@@ -43,8 +46,6 @@ class Painter:
     def draw(self, screen: Surface, current_turn: int, num_turns: int, current_round: int, num_rounds: int) -> None:
         self.screen = screen
         self.__draw_map()
-        self.__draw_turn_and_round(current_turn, num_turns, current_round, num_rounds)
-        self.__draw_scoreboard()
 
         for h, characteristics in self.__map.items():
             if characteristics["type"] == "base":
@@ -61,13 +62,14 @@ class Painter:
         self.__draw_tanks_and_spawns()
         self.__draw_hp()
 
-        self.__draw_legend()
+        self.draw_shoot_animation()
 
-        while self.explosion_group:
-            self.explosion_group.update()
-            for sprite in self.explosion_group.sprites():
-                self.screen.blit(sprite.image, sprite.rect)
-                pygame.display.update(sprite.rect)
+        self.explosion_group.draw(screen)
+        self.explosion_group.update()
+
+        self.__draw_turn_and_round(current_turn, num_turns, current_round, num_rounds)
+        self.__draw_scoreboard()
+        self.__draw_legend()
 
         pygame.display.flip()
 
@@ -143,31 +145,37 @@ class Painter:
     def __draw_scoreboard(self) -> None:
 
         text = self.__font.render("CAPTURE POINTS", True, BLACK)
-        self.screen.blit(text, (50, 200))
+        self.screen.blit(text, (50, 80))
 
-        starting_coords = (30, 250)
-        starting_coords2 = (30, 530)
+        starting_coords = (30, 130)
+        starting_coords2 = (30, 340)
+        starting_coords3 = (30, 550)
         for index, player in enumerate(self.__players):
             text = self.__font.render(f"{player.name}       {player.capture_points}", True, BLACK)
             self.screen.blit(text, (starting_coords[0], starting_coords[1] + index * 30))
 
-        pygame.draw.line(self.screen, BLACK, (30, 400), (250, 400), 5)
-
         text = self.__font.render("DESTRUCTION POINTS", True, BLACK)
-        self.screen.blit(text, (50, 480))
+        self.screen.blit(text, (50, 290))
 
         for index, player in enumerate(self.__players):
             text = self.__font.render(f"{player.name}       {player.destruction_points}", True, BLACK)
             self.screen.blit(text, (starting_coords2[0], starting_coords2[1] + index * 30))
 
-    def draw_shoot_animation(self, tank: Tank, tanks: list[Tank]) -> None:
-        h1 = tank.position
-        for t in tanks:
-            h2 = t.position
+        text = self.__font.render("WIN POINTS", True, BLACK)
+        self.screen.blit(text, (50, 500))
+
+        for index, player in enumerate(self.__players):
+            text = self.__font.render(f"{player.name}       {player.win_points}", True, BLACK)
+            self.screen.blit(text, (starting_coords3[0], starting_coords3[1] + index * 30))
+
+    def add_shoot_animation(self, h1: Hex, h2: Hex) -> None:
+        self.__shoot_animations.put((h1, h2))
+
+    def draw_shoot_animation(self) -> None:
+        while not self.__shoot_animations.empty():
+            h1, h2 = self.__shoot_animations.get()
             x1, y1 = Hex.hex_to_pixel(h1.q, h1.r)
             x2, y2 = Hex.hex_to_pixel(h2.q, h2.r)
             points = Hex.get_center(h2)
             pygame.draw.polygon(self.screen, RED, points, 3)
             pygame.draw.line(self.screen, RED, (x1, y1), (x2, y2), 5)
-
-        pygame.display.flip()

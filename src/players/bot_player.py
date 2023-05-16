@@ -31,8 +31,6 @@ class BotPlayer(Player):
         if not coord:
             return False
 
-        self._map.painter.draw_shoot_animation(tank, shoot_list)
-
         for t in shoot_list:
             self._map.shoot_update_data(tank, t)
 
