@@ -1,10 +1,10 @@
 import socket
 import json
 
-from src.constants import Action, Result, SERVER_HOST, SERVER_PORT, MAX_MESSAGE_SIZE
+from src.constants import Action, Result, SERVER_HOST, SERVER_PORT, MAX_CHUNK_SIZE
 
 
-class Client:
+class ServerConnection:
     def __init__(self) -> None:
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__socket.connect((SERVER_HOST, SERVER_PORT))
@@ -84,9 +84,7 @@ class Client:
 
         self.__socket.sendall(msg)
 
-        response_msg = self.__socket.recv(MAX_MESSAGE_SIZE)
-
-        response_code, response_data = self.__parse_response(response_msg)
+        response_code, response_data = self.__parse_response(self.receive_message())
 
         if response_code == Result.TIMEOUT:
             data: dict = response_data
@@ -98,3 +96,24 @@ class Client:
             return response_data
 
         return {}
+
+    def receive_message(self) -> bytes:
+        # First, receive the action code and message length
+        header = self.__socket.recv(8)
+        if not header:
+            # If the received header is empty, the connection was closed
+            raise ConnectionError("Connection closed by server")
+
+        data_len = int.from_bytes(header[4:], 'little')
+
+        # Receive the rest of the message in chunks
+        chunks = []
+        bytes_received = 0
+        while bytes_received < data_len:
+            chunk = self.__socket.recv(min(MAX_CHUNK_SIZE, data_len - bytes_received))
+            if not chunk:
+                # If the received chunk is empty, the connection was closed
+                raise ConnectionError("Connection closed by server")
+            chunks.append(chunk)
+            bytes_received += len(chunk)
+        return header + b"".join(chunks)

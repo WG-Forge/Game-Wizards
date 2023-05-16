@@ -3,11 +3,7 @@ from enum import IntEnum
 # Server info
 SERVER_HOST = "wgforge-srv.wargaming.net"
 SERVER_PORT = 443
-MAX_MESSAGE_SIZE = 8192
-
-HOST_PORT = 443
-HOST_NAME = "wgforge-srv.wargaming.net"
-BYTES_IN_INT = 4
+MAX_CHUNK_SIZE = 1024
 
 # Screen info
 SCREEN_WIDTH = 1200
@@ -23,6 +19,8 @@ HP_COLOR = (2, 113, 72)
 RED = (255, 0, 0)
 TANK_COLORS = ((237, 41, 57), (70, 191, 224), (224, 206, 70))
 SPAWN_COLORS = ((255, 198, 196), (173, 216, 230), (255, 250, 205))
+TRANSPARENT_COLOR = (0, 0, 0, 0)
+SECTIONS_COLOR = (128, 128, 128, 128)
 
 
 # Client enums
@@ -99,3 +97,26 @@ LEGEND_TEXT = ["SPG", "LIGHT TANK", "HEAVY TANK", "MEDIUM TANK", "TANK DESTROYER
 LEGEND_TEXT_POSITION = [(1005, 56), (1005, 93), (1005, 130), (1005, 167),
                         (1005, 204), (1005, 601), (1005, 638), (1005, 675)]
 LEGEND_NAME = ["spg", "light_tank", "heavy_tank", "medium_tank", "at_spg", "catapult", "heavy_repair", "light_repair"]
+
+# abs values of optimal hex coordinates for each tank
+OPTIMAL_HEXES = {
+    "spg": 6,
+    "light_tank": 6,
+    "heavy_tank": 2,
+    "medium_tank": 2,
+    "at_spg": 4
+}
+
+# Menu UI
+LABEL_SIZE = 24
+BUTTON_FONT_SIZE = 50
+TITLE_SIZE = 32
+BUTTON_MARGIN = (50, 10)
+PACKING_MARGIN = (0, 10)
+MAIN_FRAME_WIDTH = 700
+MAIN_FRAME_HEIGHT = 750
+SECTION_WIDTH = 650
+
+MAX_INPUT_CHARS = 45
+
+EXP_IMAGES = [f'src/assets/explosion/{i}.png' for i in range(1, 13)]
