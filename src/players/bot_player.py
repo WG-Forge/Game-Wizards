@@ -1,4 +1,5 @@
 from threading import Semaphore
+from time import sleep
 from typing import Optional
 
 from src.players.player import Player
@@ -13,12 +14,17 @@ class BotPlayer(Player):
 
     def _play_turn(self) -> None:
         if self._current_player == self.id:
-            self._ms_logic.reset_shoot_actions(self.id)
             for tank in self._tanks:
                 self._map.catapult_check(tank, tank.position)
                 self._tactic(tank)
 
+        # sleep(0.5)
         self._client.turn()
+
+    # Disconnect bot_player
+    def _disconnect(self) -> None:
+        self._client.logout()
+        self._client.disconnect()
 
     def _shoot(self, tank: Tank) -> bool:
         coord, shoot_list = self._ms_logic.shoot(tank)
@@ -26,13 +32,12 @@ class BotPlayer(Player):
             return False
 
         self._map.painter.draw_shoot_animation(tank, shoot_list)
-        self._map.painter.draw_attacked_hp(shoot_list, tank.damage)
 
         for t in shoot_list:
             self._map.shoot_update_data(tank, t)
 
         self._client.shoot({"vehicle_id": tank.id, "target": {"x": coord.q, "y": coord.r, "z": coord.s}})
-        tank.set_bonus_range(0)
+        tank.reset_bonus_range()
 
         return True
 
@@ -64,11 +69,11 @@ class BotPlayer(Player):
         self._map.move_update_data(tank, Hex.dict_to_hex(target))
         self._client.move(move_data)
 
-    def has_clear_path(self, tank: Tank, hex: Hex) -> bool:
+    def has_clear_path(self, tank: Tank, h: Hex) -> bool:
         for t in self._map.tanks.values():
             if t.id == tank.id:
                 continue
-            if t.position == hex:
+            if t.position == h:
                 return False
         return True
 
@@ -123,7 +128,7 @@ class BotPlayer(Player):
         if tank.position == tank.spawn_position:
             tank.path = []
         if (list(self._ms_logic.can_be_shot(tank.player_id, tank.position).values())[0] - 1 < tank.hp
-                    or self._ms_logic.is_in_base(tank.position)) and self._shoot(tank):
+            or self._ms_logic.is_in_base(tank.position)) and self._shoot(tank):
             return None
         elif list(self._ms_logic.can_be_shot(tank.player_id, tank.position).values())[0] >= tank.hp \
                 and not self._ms_logic.is_in_base(tank.position) and len(tank.path) == 0 and tank.repair_needed():
@@ -155,7 +160,7 @@ class BotPlayer(Player):
         if tank.position == tank.spawn_position:
             tank.path = []
         if (list(self._ms_logic.can_be_shot(tank.player_id, tank.position).values())[0] - 1 < tank.hp
-                    or self._ms_logic.is_in_base(tank.position)) and self._shoot(tank):
+            or self._ms_logic.is_in_base(tank.position)) and self._shoot(tank):
             return None
         elif list(self._ms_logic.can_be_shot(tank.player_id, tank.position).values())[0] >= tank.hp \
                 and not self._ms_logic.is_in_base(tank.position) and len(tank.path) == 0 and tank.repair_needed():
