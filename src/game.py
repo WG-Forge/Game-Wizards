@@ -1,13 +1,14 @@
-import pygame
 from pygame.time import Clock
 from threading import Semaphore
 from typing import Optional
 from threading import Thread
+import random
 
-from src.client.game_client import Client
+from src.client.game_client import ServerConnection
 from src.map.game_map import Map
 from src.players.player_factory import PlayerFactory
 from src.players.player import Player
+from src.players.remote_player import RemotePlayer
 
 
 class Game(Thread):
@@ -26,8 +27,12 @@ class Game(Thread):
         self.current_round: Optional[int] = None
         self.__round_started: bool = False
 
-        self.__current_client: Client = Client()
-        self.__all_clients: dict[Player, Client] = {}
+        # Observer client used for obtaining information about game
+        self.__info_client: ServerConnection = ServerConnection()
+        rnd = random.randint(100000, 200000)
+        self.__info_client_idx: int = self.__info_client.login(f"Info Client - Game Wizards - {rnd}", game=self.__name,
+                                                               num_turns=self.num_turns, num_players=max_players,
+                                                               is_observer=True, is_full=self.__is_full)["idx"]
 
         self.__current_player: Optional[Player] = None
         self.__waiting_players: list[Player] = []
@@ -42,7 +47,7 @@ class Game(Thread):
         self.__turn_played_sem: Semaphore = Semaphore(0)
         self.__clock: Clock = Clock()
 
-    def add_player(self, name: str, password: str = None, is_observer: bool = None) -> None:
+    def add_local_player(self, name: str, password: str = None, is_observer: bool = None) -> None:
         if self.__game_players >= self.__max_players:
             is_observer = True
 
@@ -51,50 +56,61 @@ class Game(Thread):
 
         self.__all_players += 1
 
-        player: Player
-        player_type: str
-
         if is_observer:
-            player_type = "observer"
+            player_type: str = "observer"
         else:
-            player_type = "bot_player"
+            player_type: str = "bot_player"
 
-        player = PlayerFactory.create_player(player_type, name, self.__turn_played_sem, self.__current_player_idx,
-                                             self.__game_players - 1, self.running, password, is_observer)
+        player: Player = PlayerFactory.create_player(player_type, name, self.__turn_played_sem,
+                                                     self.__current_player_idx, self.__game_players - 1, self.running,
+                                                     password, is_observer)
 
         self.__waiting_players.append(player)
 
+    def add_remote_players(self, player_list: list[dict]) -> None:
+        for p in player_list:
+            if p["idx"] not in self.__players_in_game.keys():
+                if not p["is_observer"]:
+                    self.__game_players += 1
+                    self.__all_players += 1
+                player: Player = PlayerFactory.create_player("remote_player", p["name"], self.__turn_played_sem,
+                                                             self.__current_player_idx, self.__game_players - 1,
+                                                             self.running, is_observer=p["is_observer"])
+
+                player.add(p, self.__info_client)
+                self.__players_in_game[p["idx"]] = player
+
     def run(self) -> None:
-        self.__start_game()
+        try:
+            self.start_game()
 
-        while self.running:
+            while self.running:
 
-            if not self.__round_started:
-                self.__update_round()
+                if not self.__round_started:
+                    self.__update_round()
 
-            self.__update_turn()
+                self.__update_turn()
 
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.running = False
+                self.__release_and_acquire()
 
-            self.map.draw_map(self.current_turn, self.num_turns, self.current_round, self.num_rounds)
+        finally:
+            self.__end_game()
 
-            self.__clock.tick(60)
+    def __release_and_acquire(self):
+        for player in self.__players_in_game.values():
+            player.next_turn_sem.release()
 
-            for player in self.__players_in_game.values():
-                player.next_turn_sem.release()
+        if not isinstance(self.__current_player, RemotePlayer) and self.running:
+            self.__info_client.turn()
 
-            for _ in range(self.__all_players):
-                self.__turn_played_sem.acquire()
+        for _ in range(self.__all_players):
+            self.__turn_played_sem.acquire()
 
-        self.__end_game()
-
-    def __start_game(self) -> None:
+    def start_game(self) -> None:
         self.running = True
-        self.__connect_players()
+        self.__wait_for_all_players()
 
-        game_state: dict = self.__current_client.game_state()
+        game_state: dict = self.__info_client.game_state()
 
         self.__max_players = game_state["num_players"]
         self.num_turns = game_state["num_turns"]
@@ -103,11 +119,29 @@ class Game(Thread):
         for idx in game_state["player_result_points"].keys():
             self.__player_wins[int(idx)] = 0
 
+        for p in self.__players_in_game.values():
+            if not isinstance(p, RemotePlayer) or not p.is_observer:
+                p.start()
+
+        self.__update_round()
+
+    def __wait_for_all_players(self) -> None:
+        game_state: dict = self.__info_client.game_state()
+
+        # Connect local players
+        self.__connect_local_players()
+
+        while len(game_state["players"]) != game_state["num_players"]:
+            game_state: dict = self.__info_client.game_state()
+
+            self.add_remote_players(game_state["players"])
+            self.add_remote_players(game_state["observers"])
+
     def __update_round(self) -> None:
         self.__round_started = True
 
-        game_map = self.__current_client.map()
-        game_state = self.__current_client.game_state()
+        game_map = self.__info_client.map()
+        game_state = self.__info_client.game_state()
 
         self.current_round = game_state["current_round"]
         for player in self.__players_in_game.values():
@@ -119,7 +153,7 @@ class Game(Thread):
             player.round_update(self.map)
 
     def __update_turn(self) -> None:
-        game_state = self.__current_client.game_state()
+        game_state = self.__info_client.game_state()
 
         self.current_turn = game_state["current_turn"]
         self.__current_player_idx = game_state["current_player_idx"]
@@ -127,7 +161,7 @@ class Game(Thread):
         print()
         if self.__current_player_idx != 0:
             self.__current_player = self.__players_in_game[self.__current_player_idx]
-            self.__current_client = self.__all_clients[self.__current_player]
+            self.__current_player.ms_logic.reset_shoot_actions(self.__current_player_idx)
             print(f"Current turn: {self.current_turn}, "
                   f"current player: {self.__current_player.name}")
         else:
@@ -137,8 +171,10 @@ class Game(Thread):
         for player in self.__players_in_game.values():
             player.set_curr(self.__current_player_idx)
 
+        # Update map
         self.map.update_map(game_state)
 
+        # Check if round/game is over
         if game_state["finished"]:
             self.__winner = game_state["winner"]
             if self.__winner:
@@ -154,9 +190,8 @@ class Game(Thread):
 
     def __end_game(self) -> None:
         self.__game_result()
-        self.__disconnect_players()
-
-        pygame.quit()
+        self.__info_client.logout()
+        self.__info_client.disconnect()
 
     def __round_result(self) -> None:
         print()
@@ -186,22 +221,14 @@ class Game(Thread):
         else:
             print("Game is Draw!")
 
-    def __connect_players(self) -> None:
+    def __connect_local_players(self) -> None:
         for player in self.__waiting_players:
             self.__connect(player)
 
-    def __disconnect_players(self) -> None:
-        for client in self.__all_clients.values():
-            client.logout()
-            client.disconnect()
-
     def __connect(self, player: Player) -> None:
-        self.__all_clients[player] = Client()
-        player_info: dict = self.__all_clients[player].login(player.name, player.password, self.__name,
-                                                             self.num_turns, self.__max_players, player.is_observer,
-                                                             self.__is_full)
-        player.add(player_info, self.__all_clients[player])
-        player.start()
+        game_client = ServerConnection()
+        player_info: dict = game_client.login(player.name, player.password, self.__name, self.num_turns,
+                                              self.__max_players, player.is_observer, self.__is_full)
+        player.add(player_info, game_client)
 
         self.__players_in_game[player.id] = player
-        self.__current_client = self.__all_clients[player]

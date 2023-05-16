@@ -3,12 +3,14 @@ from threading import Semaphore
 from src.players.player import Player
 from src.players.bot_player import BotPlayer
 from src.players.observer import Observer
+from src.players.remote_player import RemotePlayer
 
 
 class PlayerFactory:
     __PLAYER_TYPES = {
         "bot_player": BotPlayer,
-        "observer": Observer
+        "observer": Observer,
+        "remote_player": RemotePlayer
     }
 
     @staticmethod

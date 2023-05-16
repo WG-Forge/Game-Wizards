@@ -4,7 +4,7 @@ from typing import Optional
 
 from src.logic import MSLogic
 from src.vehicles.tank import Tank
-from src.client.game_client import Client
+from src.client.game_client import ServerConnection
 from src.map.game_map import Map
 from src.constants import TANK_COLORS, SPAWN_COLORS
 
@@ -23,7 +23,7 @@ class Player(Thread, ABC):
         self.__capture_points: int = 0
         self.__destroyed_points: int = 0
 
-        self._client: Optional[Client] = None
+        self._client: Optional[ServerConnection] = None
         self._map: Optional[Map] = None
         self._ms_logic: Optional[MSLogic] = None
         self._current_player: int = current_player
@@ -39,17 +39,23 @@ class Player(Thread, ABC):
         return hash(self.name)
 
     def __repr__(self) -> str:
-        return f"Player {self.id}: {self.name}"
+        return f"Player {self.id}: {self.name}, obs: {self.is_observer}"
 
-    def get_capture_points(self) -> int:
-        self.__capture_points = sum(tank.get_cp() for tank in self._tanks)
+    @property
+    def capture_points(self) -> int:
+        self.__capture_points = sum(tank.cp for tank in self._tanks)
         return self.__capture_points
 
-    def get_destruction_points(self) -> int:
-        self.__destroyed_points = sum(tank.get_dp() for tank in self._tanks)
+    @property
+    def destruction_points(self) -> int:
+        self.__destroyed_points = sum(tank.dp for tank in self._tanks)
         return self.__destroyed_points
 
-    def add(self, player_info: dict, client: Client) -> None:
+    @property
+    def ms_logic(self) -> MSLogic:
+        return self._ms_logic
+
+    def add(self, player_info: dict, client: ServerConnection) -> None:
         self.id = player_info["idx"]
         self.is_observer = player_info["is_observer"]
         self.__capture_points = 0
@@ -92,6 +98,12 @@ class Player(Thread, ABC):
             finally:
                 self.__turn_played_sem.release()
 
+        self._disconnect()
+
     @abstractmethod
     def _play_turn(self) -> None:
+        pass
+
+    @abstractmethod
+    def _disconnect(self) -> None:
         pass
