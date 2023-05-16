@@ -3,6 +3,7 @@ from threading import Semaphore
 from typing import Optional
 from threading import Thread
 import random
+import time
 
 from src.client.game_client import ServerConnection
 from src.map.game_map import Map
@@ -133,9 +134,13 @@ class Game(Thread):
 
         while len(game_state["players"]) != game_state["num_players"]:
             game_state: dict = self.__info_client.game_state()
+            game_map: dict = self.__info_client.map()
 
             self.add_remote_players(game_state["players"])
             self.add_remote_players(game_state["observers"])
+            self.map = Map(game_map, game_state, self.__players_in_game)
+
+            time.sleep(0.1)
 
     def __update_round(self) -> None:
         self.__round_started = True

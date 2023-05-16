@@ -143,6 +143,7 @@ class Map:
         tank.update_position(coord)
 
     def shoot_update_data(self, tank: Tank, tank2: Tank) -> None:
+        self.painter.add_shoot_animation(tank.position, tank2.position)
         if tank2.hp - tank.damage <= 0:
             self.painter.explosion_group.add(Explosion(Hex.hex_to_pixel(tank2.position.q, tank2.position.r)))
             tank.update_dp(tank.dp + tank2.full_hp)
